@@ -2,7 +2,7 @@
 set -e
 
 base_path="$(dirname "$0")/.."
-db_path="$base_path/db-test.sqlite3"
+db_path="$base_path/db.sqlite3"
 
 watch=""
 
@@ -22,5 +22,5 @@ if [[ -f "$db_path" ]]; then
 	rm "$db_path"
 fi
 
-npx knex migrate:latest
-NODE_ENV=test DEBUG=true npx jest -ic jest.integration.config.js "$watch"
+NODE_ENV=test npx knex migrate:latest
+NODE_ENV=test npx jest -ic jest.integration.config.js "$watch"

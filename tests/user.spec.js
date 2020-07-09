@@ -23,6 +23,10 @@ afterEach(() => {
 	dateMock.clear();
 });
 
+afterAll(() => {
+	db.destroy();
+});
+
 const CREATE_USER_MUTATION = gql`
 	mutation CreateUser($user: CredentialsInput!) {
 		createUser(user: $user)
