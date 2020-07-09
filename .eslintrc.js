@@ -23,6 +23,7 @@ module.exports = {
 				'tests/**/*.spec.js',
 				'jest.integration.setup.js',
 				'jest.setup.js',
+				'tests/hooks.js',
 			],
 			env: { jest: true },
 			plugins: ['jest'],

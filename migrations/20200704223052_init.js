@@ -13,7 +13,7 @@ exports.up = async function (knex) {
 		table
 			.text('password_hash')
 			.notNullable();
-		builder.timestamp('created_at');
+		builder.createdAt();
 	});
 
 	return Promise.all([
