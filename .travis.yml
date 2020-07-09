@@ -1,0 +1,12 @@
+language: node_js
+cache: npm
+branches:
+    only:
+        - master
+        - development
+before_install:
+    - npm -g i npm@latest
+install:
+    - npm i
+script:
+    - npm t
