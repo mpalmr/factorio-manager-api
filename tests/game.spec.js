@@ -5,6 +5,7 @@ const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
 const sql = require('fake-tag');
 const knex = require('knex');
+const sh = require('shelljs');
 const knexConfig = require('../knexfile');
 const { constructTestServer, createUser } = require('./util');
 
@@ -29,7 +30,8 @@ beforeAll(async () => {
 afterEach(async () => {
 	dateMock.clear();
 	await db('game').del();
-	return db.raw(sql`DELETE FROM sqlite_sequence WHERE name = 'game';`);
+	await db.raw(sql`DELETE FROM sqlite_sequence WHERE name = 'game';`);
+	return sh.rm('-rf', 'containers/*/');
 });
 
 describe('Game constraints', () => {
@@ -71,41 +73,64 @@ describe('Mutation', () => {
 		const { mutate } = createTestClient(constructTestServer({ context }));
 
 		const { data, error } = await mutate({
-			mutation: gql`
-				mutation CreateGame($game: CreateGameInput!) {
-					createGame(game: $game) {
-						id
-					}
-				}
-			`,
+			mutation: CREATE_GAME_MUTATION,
+			variables: {
+				game: { name: 'SuperDuperSlam9000' },
+			},
 		});
+
+		expect(error).toBe(undefined);
+		expect(data.createGame).toEqual({ id: 1 });
 	});
 });
 
 describe('Query', () => {
 	describe('games', () => {
-		const GAMES_QUERY = gql`
-			query GamesQuery {
-				games {
-					id
-					name
-					creator {
-						id
-					}
-					version
-					isOnline
-					createdAt
-				}
-			}
-		`;
-
 		test('returns a list of games', async () => {
-			const { query } = createTestClient(constructTestServer({ context }));
+			const { query, mutate } = createTestClient(constructTestServer({ context }));
+			dateMock.advanceTo(new Date('2018-01-01'));
 
-			const { data, errors } = await query({ query: GAMES_QUERY });
+			await mutate({
+				mutation: gql`
+					mutation CreateGames($gameOne: Game!, $gameTwo: Game!, $gameThree: Game!) {
+						createGame(game: $gameOne) {
+							id
+						}
+						crateGame(game: $gameTwo) {
+							id
+						}
+						createGame(game: $gameThree) {
+							id
+						}
+					}
+				`,
+				variables: {
+					gameOne: { name: 'Only4MyTruWurkerz' },
+					gameTwo: { name: 'JuicinAtFortinos' },
+					gameThree: { name: 'KanyeBestBros' },
+				},
+			});
+
+			const { data, errors } = await query({
+				query: gql`
+					query GamesIdQuery {
+						games {
+							id
+							name
+							version
+							creator {
+								id
+								username
+							}
+							isOnline
+							createdAt
+						}
+					}
+				`,
+			});
 
 			expect(errors).toBe(undefined);
-			expect(data.games).toHaveLength(0);
+			expect(data.games).toHaveLength(3);
 		});
 	});
 });

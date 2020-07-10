@@ -16,14 +16,13 @@ module.exports = class DockerDatasource extends DataSource {
 	}
 
 	async build(id, containerPath) {
-		return this.docker.command(`
-			build
-				--build-arg INTERNAL_ID=${id}
-				--build-arg CONTAINER_PATH=${containerPath}
-				--build-arg IMAGE_TAG=latest
-				--build-arg TCP_PORT=27015
-				--build-arg UDP_PORT=34197
-				-f ${DOCKERFILE_PATH} ${containerPath}
+		return this.docker.command(`build \
+			--build-arg image_tag=latest \
+			--build-arg internal_id=${id} \
+			--build-arg container_path=${containerPath} \
+			--build-arg tcp_port=27015 \
+			--build-arg udp_pot=34197 \
+			-f ${DOCKERFILE_PATH} ${containerPath}
 		`);
 	}
 };

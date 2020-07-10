@@ -58,6 +58,7 @@ module.exports = class DatabaseDatasource extends SQLDataSource {
 
 	async createGame(game, fn = async id => id) {
 		return this.knex.transaction(async trx => {
+			console.log(game);
 			await trx('game').insert(toRecord(game));
 			const id = await trx('game')
 				.select('id')

@@ -37,11 +37,12 @@ exports.resolvers = {
 
 	Mutation: {
 		createGame: authenticationResolver.createResolver(
-			async (root, { game }, { dataSources }) => dataSources.db.createGame(game, async id => {
-				const containerPath = path.resolve(`containers/${id}`);
-				await fs.mkdir(containerPath);
-				return dataSources.docker.build(id, containerPath);
-			}),
+			async (root, { game }, { dataSources, user }) => dataSources.db
+				.createGame({ ...game, creatorId: user.id }, async id => {
+					const containerPath = path.resolve(`containers/${id}`);
+					await fs.mkdir(containerPath);
+					return dataSources.docker.build(id, containerPath);
+				}),
 		),
 	},
 
