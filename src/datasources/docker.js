@@ -2,7 +2,7 @@
 
 const { DataSource } = require('apollo-datasource');
 const { Docker } = require('docker-cli-js');
-const { IMAGE_NAME } = require('../constants');
+const { DOCKERFILE_PATH } = require('../constants');
 
 module.exports = class DockerDatasource extends DataSource {
 	constructor(...args) {
@@ -11,8 +11,18 @@ module.exports = class DockerDatasource extends DataSource {
 	}
 
 	async list() {
-		return this.docker
-			.command('ps -a')
-			.then(containers => containers.filter(container => container.image === IMAGE_NAME));
+		return this.docker.command('ps -af label=factorio_manager_api');
+	}
+
+	async build(id, containerPath) {
+		return this.docker.command(`
+			build
+				--build-arg INTERNAL_ID=${id}
+				--build-arg CONTAINER_PATH=${containerPath}
+				--build-arg IMAGE_TAG=latest
+				--build-arg TCP_PORT=27015
+				--build-arg UDP_PORT=34197
+				-f ${DOCKERFILE_PATH} ${containerPath}
+		`);
 	}
 };

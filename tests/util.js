@@ -3,9 +3,12 @@
 const { ApolloServer } = require('apollo-server');
 const { formatError } = require('apollo-errors');
 const gql = require('graphql-tag');
-const defaultContext = require('../src/context');
 const dataSources = require('../src/datasources');
 const createSchema = require('../src/schema');
+
+function defaultContext() {
+	return { get: jest.fn() };
+}
 
 exports.constructTestServer = function ({ context = defaultContext } = {}) {
 	return new ApolloServer({

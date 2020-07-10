@@ -15,6 +15,13 @@ function fromRecord(record) {
 }
 
 module.exports = class DatabaseDatasource extends SQLDataSource {
+	async getUserById(userId) {
+		return this.knex('user')
+			.where('id', userId)
+			.first()
+			.then(fromRecord);
+	}
+
 	async createUser(user) {
 		await this.knex('user').insert(toRecord({ ...user, createdAt: new Date().toISOString() }));
 		return this.knex('user')
@@ -47,5 +54,17 @@ module.exports = class DatabaseDatasource extends SQLDataSource {
 			.where('session.expires', '<', new Date())
 			.first()
 			.then(fromRecord);
+	}
+
+	async createGame(game, fn = async id => id) {
+		return this.knex.transaction(async trx => {
+			await trx('game').insert(toRecord(game));
+			const id = await trx('game')
+				.select('id')
+				.where('name', game.name)
+				.first()
+				.then(a => a.id);
+			return fn(id);
+		});
 	}
 };
