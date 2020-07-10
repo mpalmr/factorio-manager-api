@@ -19,7 +19,6 @@ module.exports = class DockerDatasource extends DataSource {
 		return this.docker.command(`build \
 			--build-arg image_tag=latest \
 			--build-arg internal_id=${id} \
-			--build-arg container_path=${containerPath} \
 			--build-arg tcp_port=27015 \
 			--build-arg udp_pot=34197 \
 			-f ${DOCKERFILE_PATH} ${containerPath}
