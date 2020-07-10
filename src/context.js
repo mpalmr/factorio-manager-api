@@ -1,5 +1,6 @@
 'use strict';
 
-module.exports = function context({ req }) {
-	return { sessionToken: req.get('Authorization') };
+module.exports = async function context({ req, dataSources }) {
+	const sessionToken = req.get('Authorization');
+	return !sessionToken ? {} : { user: await dataSources.db.getSessionUser(sessionToken) };
 };

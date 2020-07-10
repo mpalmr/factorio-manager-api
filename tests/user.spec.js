@@ -19,14 +19,11 @@ beforeAll(() => {
 	db = knex(knexConfig);
 });
 
-beforeEach(async () => {
+afterEach(async () => {
+	dateMock.clear();
 	await db('session').del();
 	await db('user').del();
 	return db.raw(sql`DELETE FROM sqlite_sequence WHERE name IN ('user', 'session');`);
-});
-
-afterEach(() => {
-	dateMock.clear();
 });
 
 describe('CredentialsInput constraints', () => {

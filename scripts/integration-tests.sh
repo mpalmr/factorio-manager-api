@@ -22,5 +22,5 @@ if [[ -f "$db_path" ]]; then
 	rm "$db_path"
 fi
 
-npx knex migrate:latest
-NODE_ENV=test DEBUG=true npx jest -ic jest.integration.config.js "$watch"
+NODE_ENV=test npx knex migrate:latest
+NODE_ENV=test npx jest -ic jest.integration.config.js "$watch"
