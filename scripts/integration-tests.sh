@@ -2,7 +2,7 @@
 set -e
 
 base_path="$(dirname "$0")/.."
-db_path="$base_path/db-test.sqlite3"
+db_path="$base_path/db.sqlite3"
 
 watch=""
 
