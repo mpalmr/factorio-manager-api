@@ -2,6 +2,7 @@
 set -e
 
 base_path="$(dirname "$0")/.."
+source "$base_path/scripts/include.sh"
 
 containers="$(docker ps -qaf label=factorio_manager_api)"
 if [[ ! -z "$containers" ]]; then
@@ -12,8 +13,8 @@ fi
 echo "Cleaning files..."
 rm -rf \
 	"$base_path/node_modules" \
-	"$base_path/db.sqlite3" \
-	"$base_path/containers/*/" \
+	"$db_path" \
+	"$containers_path/*/" \
 	2> /dev/null
 
 if [[ ! -z "$(command -v nvm)" ]]; then

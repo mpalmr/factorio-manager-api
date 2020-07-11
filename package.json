@@ -9,7 +9,7 @@
     "dev": "NODE_ENV=development nodemon --inspect .",
     "test": "npm run lint && npm run test:integration && npm run test:unit",
     "test:unit": "NODE_ENV=test jest",
-    "test:integration": "NODE_ENV=test ./scripts/integration-tests.sh",
+    "test:integration": "./scripts/integration-tests.sh",
     "lint": "eslint src migrations index.js knexfile.js migration-utils.js",
     "clean": "./scripts/clean.sh"
   },
