@@ -16,14 +16,15 @@ exports.typeDefs = gql`
 
 	input CreateGameInput {
 		name: String! @constraint(minLength: 3, maxLength: 40)
+		version: String @constraint(pattern: "^(latest|(\d+\.){2}\d+)$")
 	}
 
 	type Game {
 		id: ID!
 		name: String! @constraint(minLength: 3, maxLength: 40)
-		creator: User!
-		version: String! @constraint(minLength: 5, pattern: "^(\d+\.){2}\d+$")
+		version: String! @constraint(pattern: "^(\d+\.){2}\d+$")
 		isOnline: Boolean!
+		creator: User!
 		createdAt: DateTime!
 	}
 `;
@@ -37,12 +38,23 @@ exports.resolvers = {
 
 	Mutation: {
 		createGame: authenticationResolver.createResolver(
-			async (root, { game }, { dataSources, user }) => dataSources.db
-				.createGame({ ...game, creatorId: user.id }, async id => {
-					const containerPath = path.resolve(`containers/${id}`);
-					await fs.mkdir(containerPath);
-					return dataSources.docker.build(id, containerPath);
-				}),
+			async (root, args, { dataSources, user }) => {
+				const { version, ...game } = args.game;
+
+				// Create a game in the database pending a transaction's successful completion
+				await dataSources.db.transaction();
+				const gameId = await dataSources.db.createGame({ ...game, creatorId: user.id });
+
+				// Make directory for volume to "live" within
+				const containerPath = path.resolve(`containers/${gameId}`);
+				await fs.mkdir(containerPath);
+
+				// Builder docker container and commit the gam to the databae
+				return dataSources.docker.build(gameId, containerPath, version)
+					.then(result => dataSources.db.commit().then(() => result))
+					.catch(ex => fs.unlink(containerPath) // Remove volume on failure
+						.then(() => Promise.reject(ex)));
+			},
 		),
 	},
 

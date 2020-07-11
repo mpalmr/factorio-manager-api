@@ -19,10 +19,10 @@ module.exports = class DockerDatasource extends DataSource {
 		return this.docker.command(`pull ${IMAGE_NAME}`);
 	}
 
-	async build(id, containerPath, imageTag = 'latest') {
-		if (imageTag === 'latest') await this.pull();
+	async build(id, containerPath, version = 'latest') {
+		if (version === 'latest') await this.pull();
 		return this.docker.command(`build \
-			--build-arg image_tag=${imageTag} \
+			--build-arg image_tag=${version} \
 			--build-arg internal_id=${id} \
 			--build-arg tcp_port=27015 \
 			--build-arg udp_pot=34197 \

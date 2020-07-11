@@ -9,22 +9,16 @@ const sh = require('shelljs');
 const knexConfig = require('../knexfile');
 const { constructTestServer, createUser } = require('./util');
 
-const CREATE_GAME_MUTATION = gql`
-	mutation CreateGame($game: CreateGameInput!) {
-		createGame(game: $game) {
-			id
-		}
-	}
-`;
-
 let db;
 let context;
 beforeAll(async () => {
+	dateMock.advanceTo(new Date('2005-05-05'));
 	db = knex(knexConfig);
 	const { mutate } = createTestClient(constructTestServer());
 	await createUser(mutate);
 	const user = await db('user').where('username', 'BobSaget').first();
 	context = () => ({ user });
+	dateMock.clear();
 });
 
 afterEach(async () => {
@@ -39,7 +33,13 @@ describe('Game constraints', () => {
 		const { mutate } = createTestClient(constructTestServer({ context }));
 
 		const { data, errors } = await mutate({
-			mutation: CREATE_GAME_MUTATION,
+			mutation: gql`
+				mutation CreateGame($game: CreateGameInput!) {
+					createGame(game: $game) {
+						id
+					}
+				}
+			`,
 			variables: {
 				game: { name: 'ay' },
 			},
@@ -55,7 +55,13 @@ describe('Game constraints', () => {
 		const { mutate } = createTestClient(constructTestServer({ context }));
 
 		const { data, errors } = await mutate({
-			mutation: CREATE_GAME_MUTATION,
+			mutation: gql`
+				mutation CreateGame($game: CreateGameInput!) {
+					createGame(game: $game) {
+						id
+					}
+				}
+			`,
 			variables: {
 				game: { name: 'ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy' },
 			},
@@ -69,18 +75,43 @@ describe('Game constraints', () => {
 });
 
 describe('Mutation', () => {
-	test('createGame', async () => {
+	describe('createGame', async () => {
+		dateMock.advanceTo(new Date('1999-04-04'));
 		const { mutate } = createTestClient(constructTestServer({ context }));
 
 		const { data, error } = await mutate({
-			mutation: CREATE_GAME_MUTATION,
+			mutation: gql`
+				mutation CreateGame($game: CreateGameInput!) {
+					createGame(game: $game) {
+						id
+						name
+						version
+						isOnline
+						creator {
+							id
+							username
+							createdAt
+						}
+						createdAt
+					}
+				}
+			`,
 			variables: {
 				game: { name: 'SuperDuperSlam9000' },
 			},
 		});
 
 		expect(error).toBe(undefined);
-		expect(data.createGame).toEqual({ id: 1 });
+		expect(data.createGame).toEqual({
+			id: 1,
+			name: 'SuperDuperSlam9000',
+			creator: {
+				id: 1,
+				username: 'BobSaget',
+				createdAt: new Date('2005-05-05'),
+			},
+			createdAt: new Date('1999-04-04'),
+		});
 	});
 });
 
