@@ -15,6 +15,8 @@ beforeAll(async () => {
 	dateMock.advanceTo(new Date('2005-05-05'));
 	db = knex(knexConfig);
 	const { mutate } = createTestClient(constructTestServer());
+	await db('user').del();
+	await db.raw(sql`DELETE FROM sqlite_sequence WHERE name = 'user';`);
 	await createUser(mutate);
 	const user = await db('user').where('username', 'BobSaget').first();
 	context = () => ({ user });
@@ -75,7 +77,7 @@ describe('Game constraints', () => {
 });
 
 describe('Mutation', () => {
-	describe('createGame', async () => {
+	test('createGame', async () => {
 		dateMock.advanceTo(new Date('1999-04-04'));
 		const { mutate } = createTestClient(constructTestServer({ context }));
 
@@ -102,7 +104,7 @@ describe('Mutation', () => {
 		});
 
 		expect(error).toBe(undefined);
-		expect(data.createGame).toEqual({
+		await expect(data.createGame).toEqual({
 			id: 1,
 			name: 'SuperDuperSlam9000',
 			creator: {

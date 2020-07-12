@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs').promises;
 const gql = require('graphql-tag');
-const { authenticationResolver } = require('../resolvers');
+const { baseResolver, authenticationResolver } = require('../resolvers');
 
 exports.typeDefs = gql`
 	extend type Query {
@@ -51,7 +51,9 @@ exports.resolvers = {
 
 				// Builder docker container and commit the gam to the databae
 				return dataSources.docker.build(gameId, containerPath, version)
-					.then(result => dataSources.db.commit().then(() => result))
+					.then(() => dataSources.db.getGameById(gameId))
+					.then(newGameRecord => dataSources.db.commit()
+						.then(() => newGameRecord))
 					.catch(ex => fs.unlink(containerPath) // Remove volume on failure
 						.then(() => Promise.reject(ex)));
 			},
@@ -62,5 +64,9 @@ exports.resolvers = {
 		async creator(game, args, { dataSources, user }) {
 			return dataSources.db.getUserById(user.id);
 		},
+
+		version: baseResolver.createResolver(
+			async (game, args, { dataSources }) => dataSources.db.getImageVersion(game.name),
+		),
 	},
 };

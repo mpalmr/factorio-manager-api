@@ -85,9 +85,9 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 	async getSessionUser(token) {
 		return this.db('session')
 			.innerJoin('user', 'user.id', 'session.userId')
-			.select('user.*')
 			.where('session.token', token)
 			.where('session.expires', '<', new Date())
+			.select('user.*')
 			.first()
 			.then(fromRecord);
 	}
@@ -95,6 +95,12 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 	/**
 	 * Games
 	 */
+	async getGameById(gameId) {
+		return this.db('game')
+			.where('id', gameId)
+			.first()
+			.then(fromRecord);
+	}
 
 	async createGame(game) {
 		await this.db('game').insert(toRecord(game));

@@ -1,5 +1,5 @@
 FROM factoriotools/factorio:latest
-LABEL factorio_manager_api true
+LABEL $label_key true
 LABEL internal_id $internal_id
 
 EXPOSE $tcp_port:27015/tcp
