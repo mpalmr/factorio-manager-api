@@ -4,10 +4,6 @@ set -e
 base_path="$(dirname "$0")/.."
 source "$base_path/scripts/include.sh"
 
-if [[ ! is_docker_running ]]; then
-	2>& echo "Docker daemon must be running to run tests..."
-fi
-
 watch=""
 
 while getopts ":w" opt; do
@@ -23,14 +19,12 @@ while getopts ":w" opt; do
 done
 
 echo "Running tests..."
-if [[ -z $DEBUG ]]; then
-	NODE_ENV=test npx jest \
-		-ic jest.integration.config.js \
-		"$watch"
+if [[ $DEBUG -ne "true" ]]; then
+	NODE_ENV=test npx jest "$watch"
 else
 	NODE_ENV=test node \
 		--inspect-brk \
 		node_modules/.bin/jest \
-		-ic jest.integration.config.js \
+		-i \
 		"$watch"
 fi

@@ -6,12 +6,12 @@ const createSchema = require('./schema');
 const dataSources = require('./data-sources');
 const context = require('./context');
 
-module.exports = function createServer() {
+module.exports = function createServer(knex) {
 	const server = new ApolloServer({
 		formatError,
-		dataSources,
 		context,
 		schema: createSchema(),
+		dataSources: dataSources(knex),
 	});
 
 	server.listen().then(({ url }) => {

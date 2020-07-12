@@ -1,43 +1,36 @@
 'use strict';
 
+const path = require('path');
 const { createTestClient } = require('apollo-server-testing');
 const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
 const sql = require('fake-tag');
-const knex = require('knex');
 const sh = require('shelljs');
-const knexConfig = require('../knexfile');
-const { constructTestServer, createUser } = require('./util');
+const { createTestDb, constructTestServer, createUserContext } = require('./util');
 
 let db;
 let context;
+let createClient;
 beforeAll(async () => {
-	dateMock.advanceTo(new Date('2005-05-05'));
-	db = knex(knexConfig);
-	const { mutate } = createTestClient(constructTestServer());
-	await createUser(mutate);
-	const user = await db('user').where('username', 'BobSaget').first();
+	db = await createTestDb();
+	const user = await createUserContext(db);
 	context = () => ({ user });
-	dateMock.clear();
+	createClient = options => createTestClient(constructTestServer(db, { context, ...options }));
 });
+
+beforeEach(async () => db('user').del());
 
 afterEach(async () => {
 	dateMock.clear();
 	await db('game').del();
 	await db.raw(sql`DELETE FROM sqlite_sequence WHERE name = 'game';`);
-	return sh.rm('-rf', 'containers/*/');
 });
 
-afterAll(async () => {
-	await db('user').del();
-	await db.raw(sql`DELETE FROM sqlite_sequence WHERE name = 'user';`);
-	return db.destroy();
-});
+afterAll(async () => db.destroy());
 
 describe('Game constraints', () => {
 	test('name must be at least 3 characters', async () => {
-		const { mutate } = createTestClient(constructTestServer({ context }));
-
+		const { mutate } = createClient();
 		const { data, errors } = await mutate({
 			mutation: gql`
 				mutation CreateGame($game: CreateGameInput!) {
@@ -58,8 +51,7 @@ describe('Game constraints', () => {
 	});
 
 	test('name cannot be larger than 40 characters', async () => {
-		const { mutate } = createTestClient(constructTestServer({ context }));
-
+		const { mutate } = createClient();
 		const { data, errors } = await mutate({
 			mutation: gql`
 				mutation CreateGame($game: CreateGameInput!) {
@@ -81,10 +73,13 @@ describe('Game constraints', () => {
 });
 
 describe('Mutation', () => {
+	afterEach(() => {
+		sh.rm('-rf', path.resolve('containers/*/'));
+	});
+
 	test('createGame', async () => {
 		dateMock.advanceTo(new Date('1999-04-04'));
-		const { mutate } = createTestClient(constructTestServer({ context }));
-
+		const { mutate } = createClient();
 		const { data, error } = await mutate({
 			mutation: gql`
 				mutation CreateGame($game: CreateGameInput!) {
@@ -125,9 +120,8 @@ describe('Mutation', () => {
 describe('Query', () => {
 	describe('games', () => {
 		test('returns a list of games', async () => {
-			const { query, mutate } = createTestClient(constructTestServer({ context }));
 			dateMock.advanceTo(new Date('2018-01-01'));
-
+			const { query, mutate } = createClient();
 			await mutate({
 				mutation: gql`
 					mutation CreateGames($gameOne: Game!, $gameTwo: Game!, $gameThree: Game!) {

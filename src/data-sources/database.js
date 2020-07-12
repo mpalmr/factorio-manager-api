@@ -15,6 +15,11 @@ function fromRecord(record) {
 }
 
 module.exports = class DatabaseDataSource extends SQLDataSource {
+	constructor(...args) {
+		console.log(...args);
+		super(...args);
+	}
+
 	/**
 	 * Transactions
 	 */
