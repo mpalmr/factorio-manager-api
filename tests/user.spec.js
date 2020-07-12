@@ -26,6 +26,8 @@ afterEach(async () => {
 	return db.raw(sql`DELETE FROM sqlite_sequence WHERE name IN ('user', 'session');`);
 });
 
+afterAll(async () => db.destroy());
+
 describe('CredentialsInput constraints', () => {
 	test('username must have a minimum length of 3', async () => {
 		const { mutate } = createTestClient(constructTestServer());

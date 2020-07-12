@@ -23,9 +23,7 @@ while getopts ":w" opt; do
 done
 
 echo "Preparing database..."
-if [[ -f "$db_path" ]]; then
-	rm "$db_path"
-fi
+rm_db
 NODE_ENV=test npx knex migrate:latest
 
 echo "Running tests..."

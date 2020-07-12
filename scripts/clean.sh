@@ -11,9 +11,9 @@ if [[ ! -z "$containers" ]]; then
 fi
 
 echo "Cleaning files..."
+rm_db
 rm -rf \
 	"$base_path/node_modules" \
-	"$db_path" \
 	"$containers_path/*/" \
 	2> /dev/null
 

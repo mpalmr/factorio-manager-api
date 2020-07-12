@@ -3,6 +3,7 @@
 const path = require('path');
 const fs = require('fs').promises;
 const gql = require('graphql-tag');
+const sh = require('shelljs');
 const { baseResolver, authenticationResolver } = require('../resolvers');
 
 exports.typeDefs = gql`
@@ -54,8 +55,10 @@ exports.resolvers = {
 					.then(() => dataSources.db.getGameById(gameId))
 					.then(newGameRecord => dataSources.db.commit()
 						.then(() => newGameRecord))
-					.catch(ex => fs.unlink(containerPath) // Remove volume on failure
-						.then(() => Promise.reject(ex)));
+					.catch(ex => {
+						sh.rm('-rf', containerPath); // Remove volume on failure
+						return Promise.reject(ex);
+					});
 			},
 		),
 	},
