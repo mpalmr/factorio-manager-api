@@ -4,8 +4,6 @@ const { createTestClient } = require('apollo-server-testing');
 const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
 const sql = require('fake-tag');
-const knex = require('knex');
-const knexConfig = require('../knexfile');
 const { constructTestServer, createUser } = require('./util');
 
 const CREATE_USER_MUTATION = gql`
@@ -14,19 +12,12 @@ const CREATE_USER_MUTATION = gql`
 	}
 `;
 
-let db;
-beforeAll(() => {
-	db = knex(knexConfig);
-});
-
 afterEach(async () => {
 	dateMock.clear();
 	await db('session').del();
 	await db('user').del();
-	return db.raw(sql`DELETE FROM sqlite_sequence WHERE name IN ('user', 'session');`);
+	return db('sqlite_sequence').del().whereIn('name', ['user', 'session']);
 });
-
-afterAll(async () => db.destroy());
 
 describe('CredentialsInput constraints', () => {
 	test('username must have a minimum length of 3', async () => {

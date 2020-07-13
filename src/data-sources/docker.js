@@ -4,8 +4,9 @@ const { DataSource } = require('apollo-datasource');
 const { Docker } = require('docker-cli-js');
 const { IMAGE_NAME, DOCKERFILE_PATH } = require('../constants');
 
-function toContainerName(name) {
-	return `${process.env.CONTAINER_NAMESPACE}_${name}`;
+function parseContainer(container) {
+	console.log(container);
+	return container;
 }
 
 module.exports = class DockerDatasource extends DataSource {
@@ -14,16 +15,16 @@ module.exports = class DockerDatasource extends DataSource {
 		this.docker = new Docker({ echo: process.env.DEBUG === 'true' });
 	}
 
-	async getImageVersion(name) {
-		return this.docker.command(`ps \
-				-af name=${toContainerName(name)} \
-				--format='{{.Image}}'`)
-			.then(image => image.replace(/^.+:/, ''));
+	async getContainerById(gameId) {
+		const { containerList } = await this.docker.command(`ps -af internal_id=${gameId}`);
+		if (!containerList.length) return null;
+		if (containerList.length > 1) throw new Error('Found two games with the same ID');
+		return parseContainer(containerList[0]);
 	}
 
 	async list() {
 		return this.docker.command(`ps -af label=${process.env.CONTAINER_NAMESPACE}`)
-			.then(({ containerList }) => containerList);
+			.then(({ containerList }) => containerList.map(parseContainer));
 	}
 
 	async pull() {
@@ -32,17 +33,20 @@ module.exports = class DockerDatasource extends DataSource {
 
 	async build(id, containerPath, {
 		version = 'latest',
-		tcpPort = '27015',
-		udpPort = '34197',
+		tcpPort = 27015,
+		udpPort = 34197,
 	} = {}) {
 		if (version === 'latest') await this.pull();
-		return this.docker.command(`build \
-			--build-arg label_key=${process.env.CONTAINER_NAMESPACE}
-			--build-arg image_tag=${version} \
-			--build-arg internal_id=${id} \
-			--build-arg tcp_port=${tcpPort} \
-			--build-arg udp_port=${udpPort} \
-			-f ${DOCKERFILE_PATH} ${containerPath}
-		`);
+		return this.docker.command([
+			'build',
+			`--build-arg label_key=${process.env.CONTAINER_NAMESPACE}`,
+			`--build-arg image_tag=${version}`,
+			`--build-arg internal_id=${id}`,
+			`--build-arg tcp_port=${tcpPort}`,
+			`--build-arg udp_port=${udpPort}`,
+			`-f ${DOCKERFILE_PATH}`,
+			containerPath,
+		]
+			.join(' '));
 	}
 };

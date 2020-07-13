@@ -13,26 +13,69 @@ jest.mock('../../constants', () => ({
 	DOCKERFILE_PATH: 'mockDockerfilePath',
 }));
 
+const originalEnv = { ...process.env };
+afterEach(() => {
+	process.env = { ...originalEnv };
+});
+
 test('Does not call any commands on construction', async () => {
 	const source = new DockerDataSource();
 	expect(source.docker.command).not.toHaveBeenCalled();
 });
 
-describe('#getImageVersion', () => {
-	const originalEnv = { ...process.env };
-
-	afterEach(() => {
-		process.env = { ...originalEnv };
+describe('#getContainerById', () => {
+	test('Passes ID to filter in command', async () => {
+		const source = new DockerDataSource();
+		source.docker.command.mockResolvedValue({ containerList: ['ay'] });
+		await source.getContainerById('im the best container');
+		const command = source.docker.command.mock.calls[0][0].split('=')[1];
+		expect(command).toBe('im the best container');
 	});
 
-	test('Retreives the image tag containing the version', async () => {
+	test('Returns null if container cannot be found', async () => {
+		const source = new DockerDataSource();
+		source.docker.command.mockResolvedValue({ containerList: [] });
+		return expect(source.getContainerById('ayyo')).resolves.toBeNull();
+	});
+
+	test('Throws an error if more than one container is found', async () => {
+		const source = new DockerDataSource();
+		source.docker.command.mockResolvedValue({ containerList: ['a', 'b'] });
+		return expect(() => source.getContainerById('howdiedo')).rejects
+			.toThrow('Found two games with the same ID');
+	});
+
+	test('Returns a found container', async () => {
+		const source = new DockerDataSource();
+		source.docker.command.mockResolvedValue({
+			containerList: [{ id: 'mockContainerId' }],
+		});
+		return expect(source.getContainerById()).resolves.toEqual({ id: 'mockContainerId' });
+	});
+});
+
+describe('#list', () => {
+	test('Passes container namespace into command', async () => {
 		process.env.CONTAINER_NAMESPACE = 'mockContainerNamespace';
 		const source = new DockerDataSource();
-		source.docker.command.mockResolvedValue('factoriotools/factorio:latest');
-		await expect(source.getImageVersion('ayyo')).resolves.toBe('latest');
+		source.docker.command.mockResolvedValue({ containerList: [] });
+		await source.list();
+		const command = source.docker.command.mock.calls[0][0].split('=')[1];
+		expect(command).toBe('mockContainerNamespace');
+	});
 
-		const nameFilterArg = source.docker.command.mock.calls[0][0].split(/\s+/g)[2];
-		expect(nameFilterArg).toBe('name=mockContainerNamespace_ayyo');
+	test('Returns an empty array if no containers are returned', async () => {
+		const source = new DockerDataSource();
+		source.docker.command.mockResolvedValue({ containerList: [] });
+		return expect(source.list()).resolves.toEqual([]);
+	});
+
+	test('Returns containers', async () => {
+		const source = new DockerDataSource();
+		source.docker.command.mockResolvedValue({
+			containerList: [{ id: 'a' }, { id: 'b' }],
+		});
+		return expect(source.list()).resolves.toEqual([{ id: 'a' }, { id: 'b' }]);
 	});
 });
 
@@ -47,10 +90,6 @@ describe('#build', () => {
 
 	beforeEach(() => {
 		pull.mockReset();
-	});
-
-	afterEach(() => {
-		process.env = { ...originalEnv };
 	});
 
 	afterAll(() => {
@@ -89,21 +128,11 @@ describe('#build', () => {
 			tcpPort: 8922,
 			udpPort: 3234,
 		});
-		const [
-			commandArg, // eslint-disable-line no-unused-vars
-			labelKeyArg,
-			imageTagArg,
-			internalIdArg,
-			tcpPortArg,
-			udpPortArg,
-		] = source.docker.command.mock.calls[0][0]
-			.split(/\s{2,}/g)
-			.map(a => a.trim());
-
-		expect(labelKeyArg).toBe('--build-arg label_key=mockContainerNamespace');
-		expect(imageTagArg).toBe('--build-arg image_tag=8.2.3');
-		expect(internalIdArg).toBe('--build-arg internal_id=mockGameId');
-		expect(tcpPortArg).toBe('--build-arg tcp_port=8922');
-		expect(udpPortArg).toBe('--build-arg udp_port=3234');
+		const [command] = source.docker.command.mock.calls[0];
+		expect(command).toContain('label_key=mockContainerNamespace');
+		expect(command).toContain('image_tag=8.2.3');
+		expect(command).toContain('internal_id=mockGameId');
+		expect(command).toContain('tcp_port=8922');
+		expect(command).toContain('udp_port=3234');
 	});
 });

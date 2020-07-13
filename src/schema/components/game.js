@@ -51,10 +51,20 @@ exports.resolvers = {
 				await fs.mkdir(containerPath);
 
 				// Builder docker container and commit the gam to the databae
-				return dataSources.docker.build(gameId, containerPath, version)
+				const newGameRecord = await dataSources.docker.build(gameId, containerPath, version)
 					.then(() => dataSources.db.getGameById(gameId))
-					.then(newGameRecord => dataSources.db.commit()
-						.then(() => newGameRecord))
+					.catch(async ex => {
+						await dataSources.db.rollback();
+						return Promise.reject(ex);
+					})
+					.then(newGameRecord => Promise.all([
+						dataSources.docker.getContainerByGameId(gameId),
+						dataSources.db.commit(),
+					])
+						.then(([container]) => ({
+							...container,
+							...newGameRecord,
+						})))
 					.catch(ex => {
 						sh.rm('-rf', containerPath); // Remove volume on failure
 						return Promise.reject(ex);

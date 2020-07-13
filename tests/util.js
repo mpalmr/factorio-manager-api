@@ -3,6 +3,7 @@
 const { ApolloServer } = require('apollo-server');
 const { formatError } = require('apollo-errors');
 const gql = require('graphql-tag');
+const sql = require('fake-tag');
 const dataSources = require('../src/data-sources');
 const createSchema = require('../src/schema');
 

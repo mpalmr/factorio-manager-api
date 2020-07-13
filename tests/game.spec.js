@@ -4,16 +4,12 @@ const { createTestClient } = require('apollo-server-testing');
 const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
 const sql = require('fake-tag');
-const knex = require('knex');
 const sh = require('shelljs');
-const knexConfig = require('../knexfile');
-const { constructTestServer, createUser } = require('./util');
+const { constructTestServer, createUser, clearDbTable } = require('./util');
 
-let db;
 let context;
 beforeAll(async () => {
 	dateMock.advanceTo(new Date('2005-05-05'));
-	db = knex(knexConfig);
 	const { mutate } = createTestClient(constructTestServer());
 	await createUser(mutate);
 	const user = await db('user').where('username', 'BobSaget').first();
@@ -24,14 +20,13 @@ beforeAll(async () => {
 afterEach(async () => {
 	dateMock.clear();
 	await db('game').del();
-	await db.raw(sql`DELETE FROM sqlite_sequence WHERE name = 'game';`);
+	await db('sqlite_sequence').del().where('name', 'game');
 	return sh.rm('-rf', 'containers/*/');
 });
 
 afterAll(async () => {
 	await db('user').del();
 	await db.raw(sql`DELETE FROM sqlite_sequence WHERE name = 'user';`);
-	return db.destroy();
 });
 
 describe('Game constraints', () => {
@@ -108,7 +103,7 @@ describe('Mutation', () => {
 		});
 
 		expect(error).toBe(undefined);
-		console.log(data, error);
+		console.log(data);
 		await expect(data.createGame).toEqual({
 			id: 1,
 			name: 'SuperDuperSlam9000',
