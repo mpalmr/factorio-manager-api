@@ -40,18 +40,19 @@ exports.resolvers = {
 	Mutation: {
 		createGame: authenticationResolver.createResolver(
 			async (root, args, { dataSources, user }) => {
-				const { version, ...game } = args.game;
+				const { version, ...gameArgs } = args.game;
 
 				// Create a game in the database pending a transaction's successful completion
 				await dataSources.db.transaction();
-				const gameId = await dataSources.db.createGame({ ...game, creatorId: user.id });
+				const gameId = await dataSources.db.createGame({ ...gameArgs, creatorId: user.id });
 
 				// Make directory for volume to "live" within
-				const containerPath = path.resolve(`containers/${gameId}`);
+				const containerPath = path.resolve(`containers/${gameId.id}`);
 				await fs.mkdir(containerPath);
 
-				// Builder docker container and commit the gam to the databae
-				const newGameRecord = await dataSources.docker.build(gameId, containerPath, version)
+				// Builder docker container and commit the gam to the database
+				await dataSources.dock
+				const newGameRecord = await dataSources.docker.build(gameRecord.id, containerPath, version)
 					.then(() => dataSources.db.getGameById(gameId))
 					.catch(async ex => {
 						await dataSources.db.rollback();

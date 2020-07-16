@@ -27,7 +27,7 @@ module.exports = {
 			],
 			env: { jest: true },
 			plugins: ['jest'],
-			global: { db: true },
+			globals: { db: true },
 			rules: {
 				camelcase: 0,
 				'import/no-extraneous-dependencies': [2, {

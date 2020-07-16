@@ -6,12 +6,10 @@ const { baseResolver, InvalidCredentailsError } = require('../resolvers');
 const { createToken } = require('../../util');
 
 exports.typeDefs = gql`
-	extend type Query {
-		authToken(credentials: CredentialsInput): String!
-	}
-
 	extend type Mutation {
 		createUser(user: CredentialsInput!): String!
+		createAuthToken(credentials: CredentialsInput!): String!
+		invalidateAuthToken(authToken: String!): Boolean!
 	}
 
 	input CredentialsInput {
@@ -35,8 +33,8 @@ const createSessionResolver = baseResolver.createResolver(async (root, args, ctx
 });
 
 exports.resolvers = {
-	Query: {
-		authToken: createSessionResolver
+	Mutation: {
+		createAuthToken: createSessionResolver
 			.createResolver(async (root, { credentials }, { dataSources, createSession }) => {
 				const user = await dataSources.db.verifyUser(credentials.username, credentials.password);
 				if (!user) throw new InvalidCredentailsError();
@@ -44,9 +42,7 @@ exports.resolvers = {
 			}, () => {
 				throw new InvalidCredentailsError();
 			}),
-	},
 
-	Mutation: {
 		createUser: createSessionResolver
 			.createResolver(async (root, { user }, { dataSources, createSession }) => {
 				const { password, ...xs } = user;

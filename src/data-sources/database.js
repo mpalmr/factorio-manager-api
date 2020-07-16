@@ -1,6 +1,7 @@
 'use strict';
 
 const { SQLDataSource } = require('datasource-sql');
+const sql = require('fake-tag');
 const argon = require('argon2');
 const { DateTime } = require('luxon');
 const snakecaseKeys = require('snakecase-keys');
@@ -15,6 +16,10 @@ function fromRecord(record) {
 }
 
 module.exports = class DatabaseDataSource extends SQLDataSource {
+	lastInsertRowId() {
+		return this.db.raw(sql`SELECT last_insert_rowid();`);
+	}
+
 	/**
 	 * Transactions
 	 */
@@ -60,11 +65,7 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 
 	async createUser(user) {
 		await this.db('user').insert(toRecord({ ...user, createdAt: new Date().toISOString() }));
-		return this.db('user')
-			.select('id')
-			.where('username', user.username)
-			.first()
-			.then(a => a.id);
+		return this.lastInsertRowId();
 	}
 
 	async verifyUser(username, password) {
@@ -95,19 +96,15 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 	/**
 	 * Games
 	 */
-	async getGameById(gameId) {
+	async getGameById(id) {
 		return this.db('game')
-			.where('id', gameId)
+			.where('id', id)
 			.first()
 			.then(fromRecord);
 	}
 
 	async createGame(game) {
 		await this.db('game').insert(toRecord(game));
-		return this.db('game')
-			.select('id')
-			.where('name', game.name)
-			.first()
-			.then(a => a.id);
+		return this.lastInsertRowId();
 	}
 };
