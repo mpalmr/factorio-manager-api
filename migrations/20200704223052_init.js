@@ -6,13 +6,8 @@ exports.up = async function (knex) {
 	await knex.schema.createTable('user', table => {
 		const builder = createTableBuilder(knex, table);
 		table.increments();
-		table
-			.string('username', 40)
-			.notNullable()
-			.unique();
-		table
-			.text('password_hash')
-			.notNullable();
+		table.string('username', 40).notNullable().unique();
+		table.text('password_hash').notNullable();
 		builder.createdAt('created_at');
 	});
 
@@ -31,6 +26,7 @@ exports.up = async function (knex) {
 			table.increments();
 			builder.fk('creator_id', 'user', 'id').notNullable();
 			table.text('name').notNullable();
+			table.text('version').notNullable().defaultTo('latest');
 			builder.createdAt();
 		}),
 	]);

@@ -12,12 +12,17 @@ function toRecord(row) {
 }
 
 function fromRecord(record) {
-	return camelcaseKeys(record);
+	const value = camelcaseKeys(record);
+	return !value?.createdAt ? value : {
+		...value,
+		createdAt: new Date(value.createdAt).toISOString(),
+	};
 }
 
 module.exports = class DatabaseDataSource extends SQLDataSource {
 	lastInsertRowId() {
-		return this.db.raw(sql`SELECT last_insert_rowid();`);
+		return this.db.raw(sql`SELECT last_insert_rowid();`)
+			.then(([result]) => result['lastInsertRowid()']);
 	}
 
 	/**
@@ -85,10 +90,10 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 
 	async getSessionUser(token) {
 		return this.db('session')
-			.innerJoin('user', 'user.id', 'session.userId')
+			.innerJoin('user', 'user.id', 'session.user_id')
 			.where('session.token', token)
-			.where('session.expires', '<', new Date())
-			.select('user.*')
+			.where('session.expires', '>=', Date.now())
+			.select('user.id', 'user.username', 'user.created_at')
 			.first()
 			.then(fromRecord);
 	}
@@ -103,8 +108,8 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 			.then(fromRecord);
 	}
 
-	async createGame(game) {
-		await this.db('game').insert(toRecord(game));
+	async createGame(game, creatorId) {
+		await this.db('game').insert(toRecord({ ...game, creatorId }));
 		return this.lastInsertRowId();
 	}
 };

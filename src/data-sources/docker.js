@@ -27,25 +27,24 @@ module.exports = class DockerDatasource extends DataSource {
 			.then(({ containerList }) => containerList.map(parseContainer));
 	}
 
-	async pull() {
-		return this.docker.command(`pull ${IMAGE_NAME}`);
+	async pull(version) {
+		return this.docker.command(`pull ${IMAGE_NAME}:${version}`);
 	}
 
-	async build(id, containerPath, {
-		version = 'latest',
+	async build(game, containerVolumePath, {
 		tcpPort = 27015,
 		udpPort = 34197,
 	} = {}) {
-		if (version === 'latest') await this.pull();
+		await this.pull(game.version);
 		return this.docker.command([
 			'build',
 			`--build-arg label_key=${process.env.CONTAINER_NAMESPACE}`,
-			`--build-arg image_tag=${version}`,
-			`--build-arg internal_id=${id}`,
+			`--build-arg image_tag=${game.version}`,
+			`--build-arg internal_id=${game.id}`,
 			`--build-arg tcp_port=${tcpPort}`,
 			`--build-arg udp_port=${udpPort}`,
 			`-f ${DOCKERFILE_PATH}`,
-			containerPath,
+			containerVolumePath,
 		]
 			.join(' '));
 	}

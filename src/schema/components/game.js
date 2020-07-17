@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const gql = require('graphql-tag');
 const sh = require('shelljs');
-const { baseResolver, authenticationResolver } = require('../resolvers');
+const { authenticationResolver } = require('../resolvers');
 
 exports.typeDefs = gql`
 	extend type Query {
@@ -23,7 +23,7 @@ exports.typeDefs = gql`
 	type Game {
 		id: ID!
 		name: String! @constraint(minLength: 3, maxLength: 40)
-		version: String! @constraint(pattern: "^(\d+\.){2}\d+$")
+		version: String! @constraint(pattern: "^(latest|(\d+\.){2}\d+)$")
 		isOnline: Boolean!
 		creator: User!
 		createdAt: DateTime!
@@ -39,37 +39,22 @@ exports.resolvers = {
 
 	Mutation: {
 		createGame: authenticationResolver.createResolver(
-			async (root, args, { dataSources, user }) => {
-				const { version, ...gameArgs } = args.game;
+			async (root, { game }, { dataSources, user }) => {
+				const gameRecord = await dataSources.db.createGame(game, user.id)
+					.then(gameId => dataSources.db.getGameById(gameId));
 
-				// Create a game in the database pending a transaction's successful completion
-				await dataSources.db.transaction();
-				const gameId = await dataSources.db.createGame({ ...gameArgs, creatorId: user.id });
+				const containerVolumePath = path.resolve(`containers/${gameRecord.id}`);
+				await fs.mkdir(containerVolumePath);
 
-				// Make directory for volume to "live" within
-				const containerPath = path.resolve(`containers/${gameId.id}`);
-				await fs.mkdir(containerPath);
+				await dataSources.docker.build(gameRecord, containerVolumePath).catch(ex => {
+					sh.rm('-rf', containerVolumePath);
+					return Promise.reject(ex);
+				});
 
-				// Builder docker container and commit the gam to the database
-				await dataSources.dock
-				const newGameRecord = await dataSources.docker.build(gameRecord.id, containerPath, version)
-					.then(() => dataSources.db.getGameById(gameId))
-					.catch(async ex => {
-						await dataSources.db.rollback();
-						return Promise.reject(ex);
-					})
-					.then(newGameRecord => Promise.all([
-						dataSources.docker.getContainerByGameId(gameId),
-						dataSources.db.commit(),
-					])
-						.then(([container]) => ({
-							...container,
-							...newGameRecord,
-						})))
-					.catch(ex => {
-						sh.rm('-rf', containerPath); // Remove volume on failure
-						return Promise.reject(ex);
-					});
+				return {
+					...gameRecord,
+					isOnline: false,
+				};
 			},
 		),
 	},
@@ -78,9 +63,5 @@ exports.resolvers = {
 		async creator(game, args, { dataSources, user }) {
 			return dataSources.db.getUserById(user.id);
 		},
-
-		version: baseResolver.createResolver(
-			async (game, args, { dataSources }) => dataSources.db.getImageVersion(game.name),
-		),
 	},
 };

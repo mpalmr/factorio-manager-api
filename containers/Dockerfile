@@ -1,4 +1,6 @@
-FROM factoriotools/factorio:latest
+ARG image_tag
+FROM factoriotools/factorio:${image_tag}
+
 LABEL $label_key true
 LABEL internal_id $internal_id
 

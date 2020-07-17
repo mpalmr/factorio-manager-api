@@ -14,8 +14,11 @@ const InvalidCredentailsError = createError('InvalidCredentailsError', {
 	message: 'Invalid credentails',
 });
 
-const authenticationResolver = baseResolver.createResolver(async (parent, args, { user }) => {
-	if (!user) throw new InvalidCredentailsError();
+const authenticationResolver = baseResolver.createResolver(async (parent, args, ctx) => {
+	if (!ctx.authToken) throw new InvalidCredentailsError();
+	ctx.user = await ctx.dataSources.db.getSessionUser(ctx.authToken);
+	console.log(ctx);
+	if (!ctx.user) throw new InvalidCredentailsError();
 });
 
 module.exports = {
