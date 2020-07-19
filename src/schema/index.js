@@ -2,7 +2,7 @@
 
 const { makeExecutableSchema } = require('@graphql-tools/schema');
 const { constraintDirective, constraintDirectiveTypeDefs } = require('graphql-constraint-directive');
-const { DateTimeResolver } = require('graphql-scalars');
+const { UnsignedIntResolver, DateTimeResolver } = require('graphql-scalars');
 const baseTypeDefs = require('./base-typedefs');
 const user = require('./components/user');
 const game = require('./components/game');
@@ -35,6 +35,7 @@ module.exports = function createSchema() {
 		schemaTransforms: [constraintDirective()],
 		resolvers: {
 			DateTime: DateTimeResolver,
+			UnsignedInt: UnsignedIntResolver,
 			Query: {},
 			Mutation: {},
 		},

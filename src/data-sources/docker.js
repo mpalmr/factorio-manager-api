@@ -31,20 +31,18 @@ module.exports = class DockerDatasource extends DataSource {
 		return this.docker.command(`pull ${IMAGE_NAME}:${version}`);
 	}
 
-	async build(game, containerVolumePath, {
-		tcpPort = 27015,
-		udpPort = 34197,
-	} = {}) {
-		await this.pull(game.version);
+	async run(game, containerVolumePath) {
 		return this.docker.command([
-			'build',
-			`--build-arg label_key=${process.env.CONTAINER_NAMESPACE}`,
-			`--build-arg image_tag=${game.version}`,
-			`--build-arg internal_id=${game.id}`,
-			`--build-arg tcp_port=${tcpPort}`,
-			`--build-arg udp_port=${udpPort}`,
-			`-f ${DOCKERFILE_PATH}`,
-			containerVolumePath,
+			'run',
+			'--detach',
+			'--env ENABLE_GENERATE_NEW_MAP_SAVE=true',
+			'--env SAVE_NAME=dummy',
+			'--restart always',
+			`--name ${process.env.CONTAINER_NAMESPACE}_${game.name}`,
+			`--volume ${containerVolumePath}:/factorio`,
+			`--publish ${game.tcpPort}:27015/tcp`,
+			`--publish ${game.udpPort}:34197/udp`,
+			`factoriotools/factorio:${game.version}`,
 		]
 			.join(' '));
 	}
