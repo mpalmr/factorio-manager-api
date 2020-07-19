@@ -4,34 +4,42 @@ set -e
 base_path="$(dirname "$0")/.."
 source "$base_path/scripts/include.sh"
 
+clean_db=false
+clean_containers=false
 clean_packages=false
 
-while getopts ":p" opt; do
+while getopts ":adpc" opt; do
 	case ${opt} in
+		d)
+			clean_db=true
+			;;
+		c)
+			clean_containers=true
+			;;
 		p)
 			clean_packages=true
 			;;
 		*)
-			2>& echo "Invalid argument: $opt"
-			exit 1
+			clean_db=true
+			clean_containers=true
+			clean_packages=true
 			;;
 	esac
 done
 
-containers="$(docker ps -qaf label=factorio_manager_api)"
-if [[ ! -z "$containers" ]]; then
-	echo "Removing containers and volumes..."
-	docker rm -vf "$(docker ps -qaf label=fma)"
+if [[ "$clean_db" == true ]]; then
+	echo "Cleaning database..."
+	rm -f "$base_path/db.sqlite3"
 fi
 
-echo "Cleaning files..."
-rm -rf \
-	"$containers_path/*/" \
-	"$base_path/db.sqlite3" \
-	2> /dev/null
+if [[ "$clean_containers" == true ]]; then
+	echo "Cleaning containers..."
+	rm -rf "$containers_path/*/" 2> /dev/null
+	docker rm -vf "$(docker ps -qaf name=fma)" 2> /dev/null
+fi
 
-if [[ "$clean_packages" -eq true ]]; then
-	rm -rf node_modules 2> /dev/null
+if [[ "$clean_packages" == true ]]; then
+	rm -rf "$base_path/node_modules" 2> /dev/null
 	if [[ ! -z "$(command -v nvm)" ]]; then
 		nvm use 2> /dev/null
 	fi
