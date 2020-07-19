@@ -39,8 +39,6 @@ exports.resolvers = {
 				const user = await dataSources.db.verifyUser(credentials.username, credentials.password);
 				if (!user) throw new InvalidCredentailsError();
 				return createSession(user.id);
-			}, () => {
-				throw new InvalidCredentailsError();
 			}),
 
 		createUser: createSessionResolver

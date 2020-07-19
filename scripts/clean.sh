@@ -34,7 +34,7 @@ fi
 
 if [[ "$clean_containers" == true ]]; then
 	echo "Cleaning containers..."
-	rm -rf "$containers_path/*/" 2> /dev/null
+	rm -rf "$containers_path/*/"
 	docker rm -vf "$(docker ps -qaf name=fma)" 2> /dev/null
 fi
 

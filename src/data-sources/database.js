@@ -20,7 +20,7 @@ function fromRecord(record) {
 }
 
 function getPort(reservedPorts) {
-	const port = Math.random() * (65535 - 1024) + 1024;
+	const port = Math.floor(Math.random() * (65535 - 1024) + 1024);
 	return reservedPorts.includes(port) ? getPort(reservedPorts) : port;
 }
 
@@ -65,7 +65,6 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 	/**
 	 * Users and sessions
 	 */
-
 	async getUserById(userId) {
 		return this.db('user')
 			.where('id', userId)
@@ -122,12 +121,22 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 			if (!tcpPort) tcpPort = getPort(ports.map(port => port.tcpPort));
 			if (!udpPort) udpPort = getPort(ports.map(port => port.udpPort));
 		}
+
 		await this.db('game').insert(toRecord({
 			...game,
 			tcpPort,
 			udpPort,
 			creatorId,
 		}));
-		return this.getGameById(this.lastInsertRowId());
+
+		return this.getGameById(await this.lastInsertRowId());
+	}
+
+	async deactivateGame(gameId) {
+		return this.db('game')
+			.update('deactivated', true)
+			.update('tcp_port', null)
+			.update('udp_port', null)
+			.where('id', gameId);
 	}
 };

@@ -21,8 +21,13 @@ const authenticationResolver = baseResolver.createResolver(async (parent, args, 
 	if (!ctx.user) throw new InvalidCredentailsError();
 });
 
+const ForbiddenError = createError('ForbiddenError', {
+	message: 'Do not have the permissions to access this resource',
+});
+
 module.exports = {
 	baseResolver,
 	authenticationResolver,
 	InvalidCredentailsError,
+	ForbiddenError,
 };

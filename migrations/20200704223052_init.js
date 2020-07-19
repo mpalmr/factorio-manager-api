@@ -27,16 +27,9 @@ exports.up = async function (knex) {
 			builder.fk('creator_id', 'user', 'id').notNullable();
 			table.text('name').notNullable();
 			table.text('version').notNullable().defaultTo('latest');
-			table
-				.integer('tcp_port')
-				.unsigned()
-				.notNullable()
-				.unique();
-			table
-				.integer('udp_port')
-				.unsigned()
-				.notNullable()
-				.unique();
+			table.integer('tcp_port').unsigned().unique();
+			table.integer('udp_port').unsigned().unique();
+			table.boolean('deactivated').notNullable().defaultTo(false);
 			builder.createdAt();
 		}),
 	]);

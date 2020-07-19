@@ -23,3 +23,4 @@ npm-debug.log*
 # Project specific
 /logs/*.log
 *.sqlite3*
+/containers/*/
