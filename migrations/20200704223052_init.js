@@ -25,6 +25,7 @@ exports.up = async function (knex) {
 			const builder = createTableBuilder(knex, table);
 			table.increments();
 			builder.fk('creator_id', 'user', 'id').notNullable();
+			table.string('container_id', 64).notNullable().unique();
 			table.text('name').notNullable();
 			table.text('version').notNullable().defaultTo('latest');
 			table.integer('tcp_port').unsigned().unique();

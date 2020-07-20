@@ -3,7 +3,6 @@
 const { ApolloServer } = require('apollo-server');
 const { formatError } = require('apollo-errors');
 const gql = require('graphql-tag');
-const sql = require('fake-tag');
 const dataSources = require('../src/data-sources');
 const createSchema = require('../src/schema');
 
@@ -21,24 +20,20 @@ exports.constructTestServer = function ({ context = defaultContext } = {}) {
 };
 
 exports.createUser = async function (mutate) {
-	return mutate({
+	const { data, errors } = await mutate({
 		mutation: gql`
 			mutation CreateUser($user: CredentialsInput!) {
 				createUser(user: $user)
 			}
 		`,
 		variables: {
-			user: {
+			usr: {
 				username: 'BobSaget',
 				password: 'P@ssw0rd',
 			},
 		},
-	})
-		.then(({ data, errors }) => {
-			if (!data) {
-				console.error(errors);
-				throw new Error(errors[0]);
-			}
-			return data;
-		});
+	});
+
+	if (!data) throw new Error(errors[0]);
+	return data;
 };

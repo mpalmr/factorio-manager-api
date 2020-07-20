@@ -3,14 +3,7 @@
 const { createTestClient } = require('apollo-server-testing');
 const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
-const sql = require('fake-tag');
 const { constructTestServer, createUser } = require('./util');
-
-const CREATE_USER_MUTATION = gql`
-	mutation CreateUser($user: CredentialsInput!) {
-		createUser(user: $user)
-	}
-`;
 
 afterEach(async () => {
 	dateMock.clear();
@@ -18,6 +11,12 @@ afterEach(async () => {
 	await db('user').del();
 	return db('sqlite_sequence').del().whereIn('name', ['user', 'session']);
 });
+
+const CREATE_USER_MUTATION = gql`
+	mutation CreateUser($user: CredentialsInput!) {
+		createUser(user: $user)
+	}
+`;
 
 describe('CredentialsInput constraints', () => {
 	test('username must have a minimum length of 3', async () => {
@@ -142,6 +141,7 @@ describe('Authentication', () => {
 
 	test('Can get a new authentication token', async () => {
 		const { query, mutate } = createTestClient(constructTestServer());
+		console.log(await db('user'), await db('session'));
 		await createUser(mutate);
 		const { data, errors } = await query({
 			query: AUTH_TOKEN_QUERY,

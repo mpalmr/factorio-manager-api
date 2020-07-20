@@ -23,7 +23,7 @@ while getopts ":w" opt; do
 done
 
 echo "Preparing database..."
-rm_db
+rm -rf "$base_path/db.sqlite3"
 NODE_ENV=test npx knex migrate:latest
 
 echo "Running tests..."

@@ -1,6 +1,5 @@
 'use strict';
 
-const path = require('path');
-
 exports.IMAGE_NAME = 'factoriotools/factorio';
-exports.CONTAINERS_PATH = path.resolve('containers');
+exports.FACTORIO_TCP_PORT = 27015;
+exports.FACTORIO_UDP_PORT = 34197;

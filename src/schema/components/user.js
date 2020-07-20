@@ -2,6 +2,7 @@
 
 const argon = require('argon2');
 const gql = require('graphql-tag');
+const argon2 = require('argon2');
 const { baseResolver, InvalidCredentailsError } = require('../resolvers');
 const { createToken } = require('../../util');
 
@@ -24,31 +25,30 @@ exports.typeDefs = gql`
 	}
 `;
 
-const createSessionResolver = baseResolver.createResolver(async (root, args, ctx) => {
-	ctx.createSession = async userId => {
-		const token = await createToken();
-		await ctx.dataSources.db.createSession(userId, token);
-		return token;
-	};
-});
+async function createSession(db, userId) {
+	const token = await createToken();
+	await db.createSession(userId, token);
+	return token;
+}
 
 exports.resolvers = {
 	Mutation: {
-		createAuthToken: createSessionResolver
-			.createResolver(async (root, { credentials }, { dataSources, createSession }) => {
-				const user = await dataSources.db.verifyUser(credentials.username, credentials.password);
-				if (!user) throw new InvalidCredentailsError();
-				return createSession(user.id);
+		createAuthToken: baseResolver
+			.createResolver(async (root, { credentials }, { dataSources }) => {
+				const { passwordHash, ...user } = await dataSources.db.getUser(credentials.username);
+				if (!await argon2.verify(passwordHash, credentials.password)) {
+					throw new InvalidCredentailsError();
+				}
+				return createSession(dataSources.db, user.id);
 			}),
 
-		createUser: createSessionResolver
-			.createResolver(async (root, { user }, { dataSources, createSession }) => {
-				const { password, ...xs } = user;
-				const userId = await dataSources.db.createUser({
-					...xs,
-					passwordHash: await argon.hash(password),
-				});
-				return createSession(userId);
-			}),
+		createUser: baseResolver.createResolver(async (root, { user }, { dataSources }) => {
+			const { password, ...xs } = user;
+			const userId = await dataSources.db.createUser({
+				...xs,
+				passwordHash: await argon.hash(password),
+			});
+			return createSession(dataSources.db, userId);
+		}),
 	},
 };

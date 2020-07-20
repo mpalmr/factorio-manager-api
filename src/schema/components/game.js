@@ -3,6 +3,7 @@
 const path = require('path');
 const fs = require('fs').promises;
 const gql = require('graphql-tag');
+const { createError } = require('apollo-errors');
 const sh = require('shelljs');
 const { authenticationResolver, ForbiddenError } = require('../resolvers');
 
@@ -34,6 +35,10 @@ exports.typeDefs = gql`
 	}
 `;
 
+const DuplicateNameError = createError('DuplicateNameError', {
+	message: 'A container with that name already exists',
+});
+
 const isCreatorResolver = authenticationResolver.createResolver(
 	async (root, { gameId, game }, { dataSources, user }) => {
 		const gameRecord = await dataSources.db.getGameById(gameId || game.id);
@@ -51,21 +56,21 @@ exports.resolvers = {
 	Mutation: {
 		createGame: authenticationResolver.createResolver(
 			async (root, { game }, { dataSources, user }) => {
-				// Create game record
-				const gameRecord = await dataSources.db.createGame(game, user.id);
+				// Ensure volume directory doesn't already exist else create it
+				const containerVolumePath = path.resolve(`containers/${game.name}`);
+				await fs.access(containerVolumePath, fs.constants.F_OK)
+					.catch(() => Promise.reject(new DuplicateNameError()));
 
-				// Build container
-				const containerVolumePath = path.resolve(`containers/${gameRecord.id}`);
 				await fs.mkdir(containerVolumePath);
-				await dataSources.docker.run(gameRecord, containerVolumePath).catch(ex => {
+				try {
+					const gameRecord = await dataSources.db.createGame(game, user.id);
+					const containerId = await dataSources.docker.run(gameRecord, containerVolumePath);
+					await dataSources.docker.stop(containerId);
+					await fs.unlink(path.join(containerVolumePath, 'saves', 'dummy.zip'));
+				} catch (ex) {
 					sh.rm('-rf', containerVolumePath);
 					return Promise.reject(ex);
-				});
-
-				return {
-					...gameRecord,
-					isOnline: false,
-				};
+				}
 			},
 		),
 

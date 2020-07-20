@@ -14,48 +14,17 @@ jest.mock('datasource-sql', () => ({
 	},
 }));
 
-describe('Transactions', () => {
-	test('Does not call knex transaction functions on construction but when transaction method is called', async () => {
-		const db = new DatabaseDataSource();
-		expect(db.knex.transaction).not.toHaveBeenCalled();
-		await expect(db.transaction()).resolves.toBe(undefined);
-		expect(db.knex.transaction).toHaveBeenCalled();
+test('getUser uses correct key in where clause', async () => {
+	const db = new DatabaseDataSource();
+	const where = jest.fn().mockReturnValue({
+		first: jest.fn().mockResolvedValue({ id: 'mockUserId' }),
 	});
+	db.knex.mockReturnValue({ where });
 
-	test('Cannot start a transaction when one is already taking place', async () => {
-		const db = new DatabaseDataSource();
-		await db.transaction();
-		return expect(db.transaction()).rejects.toThrow('Transaction already in progress');
-	});
+	await expect(db.getUser('123')).resolves.toEqual({ id: 'mockUserId' });
+	expect(where).toHaveBeenCalledWith('id', '123');
 
-	test('Cannot commit if no transaction is in progress', async () => {
-		const db = new DatabaseDataSource();
-		await expect(db.commit()).rejects.toThrow('No transaction is in progress');
-		expect(db.knex.transaction).not.toHaveBeenCalled();
-	});
-
-	test('Can commit during transaction', async () => {
-		const db = new DatabaseDataSource();
-		await db.transaction();
-		return expect(db.commit()).resolves.toBe(undefined);
-	});
-
-	test('Cannot rollback if no transaction is in progress', async () => {
-		const db = new DatabaseDataSource();
-		await expect(db.rollback()).rejects.toThrow('No transaction is in progress');
-		expect(db.knex.transaction).not.toHaveBeenCalled();
-	});
-
-	test('Can rollback during transaction', async () => {
-		const db = new DatabaseDataSource();
-		await db.transaction();
-		return expect(db.rollback()).resolves.toBe(undefined);
-	});
-
-	test('Resolves to transaction if one is taking place', async () => {
-		const db = new DatabaseDataSource();
-		expect(db.db).toBe(db.knex);
-		await db.transaction();
-		expect(db.db).not.toBe(db.knex);
-	});
+	where.mockClear();
+	await expect(db.getUser('BananaBob')).resolves.toEqual({ id: 'mockUserId' });
+	expect(where).toHaveBeenCalledWith('username', 'BananaBob');
 });
