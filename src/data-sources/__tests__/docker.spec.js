@@ -10,7 +10,8 @@ jest.mock('docker-cli-js', () => ({
 
 jest.mock('../../constants', () => ({
 	IMAGE_NAME: 'mockImageName',
-	DOCKERFILE_PATH: 'mockDockerfilePath',
+	FACTORIO_TCP_PORT: 27015,
+	FACTORIO_UDP_PORT: 34197,
 }));
 
 const originalEnv = { ...process.env };
@@ -80,11 +81,9 @@ describe('#list', () => {
 });
 
 describe('#build', () => {
-	let originalEnv;
 	let pull;
 
 	beforeAll(() => {
-		originalEnv = { ...process.env };
 		pull = jest.spyOn(DockerDataSource.prototype, 'pull');
 	});
 

@@ -7,10 +7,10 @@
   "scripts": {
     "start": "NODE_ENV=production node .",
     "dev": "NODE_ENV=development nodemon -i containers --inspect .",
-    "test": "npm run lint && npm run test:integration && npm run test:unit",
+    "test": "npm run lint && npm run test:unit && npm run test:integration",
     "test:unit": "NODE_ENV=test jest",
-    "test:integration": "./scripts/integration-tests.sh",
-    "lint": "eslint src migrations index.js knexfile.js migration-utils.js",
+    "test:integration": "NODE_ENV=test jest --detectOpenHandles -c jest.integration.config.js",
+    "lint": "eslint src tests migrations index.js knexfile.js migration-utils.js jest.* *.config.js",
     "clean": "./scripts/clean.sh"
   },
   "author": "Matthew Palmer <mspalmer91@gmail.com>",
@@ -40,11 +40,11 @@
     "sqlite3": "^5.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.10.4",
+    "@babel/core": "^7.10.5",
     "@babel/plugin-proposal-optional-chaining": "^7.10.4",
-    "apollo-server-testing": "^2.15.1",
+    "apollo-server-testing": "^2.16.0",
     "babel-eslint": "^10.1.0",
-    "eslint": "^7.4.0",
+    "eslint": "^7.5.0",
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-jest": "^23.18.0",

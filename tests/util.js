@@ -3,6 +3,7 @@
 const { ApolloServer } = require('apollo-server');
 const { formatError } = require('apollo-errors');
 const gql = require('graphql-tag');
+const dateMock = require('jest-date-mock');
 const dataSources = require('../src/data-sources');
 const createSchema = require('../src/schema');
 
@@ -20,20 +21,23 @@ exports.constructTestServer = function ({ context = defaultContext } = {}) {
 };
 
 exports.createUser = async function (mutate) {
-	const { data, errors } = await mutate({
+	dateMock.advanceTo(new Date('2005-05-05'));
+	const { errors } = await mutate({
 		mutation: gql`
 			mutation CreateUser($user: CredentialsInput!) {
 				createUser(user: $user)
 			}
 		`,
 		variables: {
-			usr: {
+			user: {
 				username: 'BobSaget',
 				password: 'P@ssw0rd',
 			},
 		},
 	});
 
-	if (!data) throw new Error(errors[0]);
-	return data;
+	if (errors) throw new Error(errors);
+	const context = async () => ({ user: await db('user').where('username', 'BobSaget').first() });
+	dateMock.clear();
+	return context;
 };

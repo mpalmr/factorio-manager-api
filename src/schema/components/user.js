@@ -44,11 +44,12 @@ exports.resolvers = {
 
 		createUser: baseResolver.createResolver(async (root, { user }, { dataSources }) => {
 			const { password, ...xs } = user;
-			const userId = await dataSources.db.createUser({
+			const userRecord = await dataSources.db.createUser({
 				...xs,
 				passwordHash: await argon.hash(password),
 			});
-			return createSession(dataSources.db, userId);
+			console.log(userRecord);
+			return createSession(dataSources.db, userRecord.id);
 		}),
 	},
 };

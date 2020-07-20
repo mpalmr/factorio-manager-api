@@ -41,11 +41,10 @@ module.exports = class DatabaseDataSource extends SQLDataSource {
 
 	async createUser(user) {
 		await this.knex('user').insert(toRecord({ ...user, createdAt: new Date().toISOString() }));
-		return this.lastInsertRowId();
+		return this.getUser(await this.lastInsertRowId());
 	}
 
 	createSession(userId, token) {
-		console.log(userId, token);
 		return this.knex('session').insert(toRecord({
 			userId,
 			token,

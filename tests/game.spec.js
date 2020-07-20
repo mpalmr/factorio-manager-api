@@ -5,16 +5,12 @@ const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
 const sql = require('fake-tag');
 const sh = require('shelljs');
-const { constructTestServer, createUser, clearDbTable } = require('./util');
+const db = require('./db');
+const { constructTestServer, createUser } = require('./util');
 
 let context;
 beforeAll(async () => {
-	dateMock.advanceTo(new Date('2005-05-05'));
-	const { mutate } = createTestClient(constructTestServer());
-	await createUser(mutate);
-	const user = await db('user').where('username', 'BobSaget').first();
-	context = () => ({ user });
-	dateMock.clear();
+	context = await createUser(createTestClient(constructTestServer()).mutate);
 });
 
 afterEach(async () => {

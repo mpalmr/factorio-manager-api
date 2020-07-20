@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
 set -e
 
+usage () {
+	cat <<HELP_USAGE
+
+	$0 [-cdp]
+
+	-c Removes all containers and their volumes
+	-d Removes databases
+	-p Remove and reinstalls npm packages
+HELP_USAGE
+}
+
 base_path="$(dirname "$0")/.."
-source "$base_path/scripts/include.sh"
+db_path="$base_path/db.sqlite3"
+containers_path="$base_path/containers"
 
 clean_db=false
 clean_containers=false
@@ -10,14 +22,18 @@ clean_packages=false
 
 while getopts ":adpc" opt; do
 	case ${opt} in
-		d)
-			clean_db=true
-			;;
 		c)
 			clean_containers=true
 			;;
+		d)
+			clean_db=true
+			;;
 		p)
 			clean_packages=true
+			;;
+		h)
+			usage
+			exit 1
 			;;
 		*)
 			clean_db=true
@@ -29,7 +45,8 @@ done
 
 if [[ "$clean_db" == true ]]; then
 	echo "Cleaning database..."
-	rm -f "$base_path/db.sqlite3"
+	rm -f "$base_path/*.sqlite3"
+	npx knex migrate:latest
 fi
 
 if [[ "$clean_containers" == true ]]; then
@@ -45,5 +62,3 @@ if [[ "$clean_packages" == true ]]; then
 	fi
 	npm i
 fi
-
-npx knex migrate:latest

@@ -3,6 +3,7 @@
 const { createTestClient } = require('apollo-server-testing');
 const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
+const db = require('./db');
 const { constructTestServer, createUser } = require('./util');
 
 afterEach(async () => {
@@ -141,7 +142,6 @@ describe('Authentication', () => {
 
 	test('Can get a new authentication token', async () => {
 		const { query, mutate } = createTestClient(constructTestServer());
-		console.log(await db('user'), await db('session'));
 		await createUser(mutate);
 		const { data, errors } = await query({
 			query: AUTH_TOKEN_QUERY,
