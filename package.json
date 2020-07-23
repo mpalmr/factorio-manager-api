@@ -16,7 +16,7 @@
   "author": "Matthew Palmer <mspalmer91@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@graphql-tools/schema": "^6.0.12",
+    "@graphql-tools/schema": "^6.0.15",
     "apollo": "^2.29.1",
     "apollo-datasource": "^0.7.2",
     "apollo-errors": "^1.9.0",
