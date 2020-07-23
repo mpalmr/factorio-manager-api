@@ -12,8 +12,8 @@ const baseResolver = createResolver(
 		: new UnknownError(error)),
 );
 
-const InvalidCredentailsError = createError('InvalidCredentailsError', {
-	message: 'Invalid credentails',
+const InvalidCredentialsError = createError('InvalidCredentialsError', {
+	message: 'Invalid credentials',
 });
 
 const authenticationResolver = baseResolver.createResolver(async (parent, args, ctx) => {
@@ -21,11 +21,11 @@ const authenticationResolver = baseResolver.createResolver(async (parent, args, 
 		.innerJoin('user', 'user.id', 'session.user_id')
 		.select('user.*')
 		.first();
-	if (!ctx.user) throw new InvalidCredentailsError();
+	if (!ctx.user) throw new InvalidCredentialsError();
 });
 
 module.exports = {
 	baseResolver,
 	authenticationResolver,
-	InvalidCredentailsError,
+	InvalidCredentialsError,
 };
