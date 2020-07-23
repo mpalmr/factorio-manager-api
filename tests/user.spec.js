@@ -4,23 +4,12 @@ const { createTestClient } = require('apollo-server-testing');
 const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
 const sql = require('fake-tag');
-const knex = require('knex');
-const knexConfig = require('../knexfile');
 const { constructTestServer, createUser } = require('./util');
 
-let db;
-beforeAll(() => {
-	db = knex(knexConfig);
-});
-
 beforeEach(async () => {
-	await db('session').del();
-	await db('user').del();
-	return db.raw(sql`DELETE FROM sqlite_sequence WHERE name IN ('user', 'session');`);
-});
-
-afterEach(() => {
-	dateMock.clear();
+	await mockDb('session').del();
+	await mockDb('user').del();
+	return mockDb.raw(sql`DELETE FROM sqlite_sequence WHERE name IN ('user', 'session');`);
 });
 
 const CREATE_USER_MUTATION = gql`
@@ -115,7 +104,7 @@ describe('Create user', () => {
 		expect(Object.keys(data)).toEqual(['createUser']);
 		expect(data.createUser).toHaveLength(88);
 
-		const { password_hash } = await db('user')
+		const { password_hash } = await mockDb('user')
 			.select('passwordHash')
 			.where('username', 'TheMagicBeanOfOle')
 			.first();
