@@ -1,17 +1,16 @@
 'use strict';
 
+const { createError } = require('apollo-errors');
 const argon = require('argon2');
 const gql = require('graphql-tag');
-const { baseResolver, InvalidCredentailsError } = require('../resolvers');
-const { createToken } = require('../../util');
+const Database = require('../../data-sources/database');
+const { baseResolver, InvalidCredentialsError } = require('../resolvers');
 
 exports.typeDefs = gql`
-	extend type Query {
-		authToken(credentials: CredentialsInput): String!
-	}
-
 	extend type Mutation {
 		createUser(user: CredentialsInput!): String!
+		createAuthToken(credentials: CredentialsInput!): String!
+		invalidateAuthToken(token: String!): Boolean
 	}
 
 	input CredentialsInput {
@@ -26,35 +25,49 @@ exports.typeDefs = gql`
 	}
 `;
 
-const createSessionResolver = baseResolver.createResolver(async (root, args, ctx) => {
-	ctx.createSession = async userId => {
-		const token = await createToken();
-		await ctx.dataSources.db.createSession(userId, token);
-		return token;
-	};
+const DuplicateUserError = createError('DuplicateUserError', {
+	message: 'Username is already in use',
 });
 
 exports.resolvers = {
-	Query: {
-		authToken: createSessionResolver
-			.createResolver(async (root, { credentials }, { dataSources, createSession }) => {
-				const user = await dataSources.db.verifyUser(credentials.username, credentials.password);
-				if (!user) throw new InvalidCredentailsError();
-				return createSession(user.id);
-			}, () => {
-				throw new InvalidCredentailsError();
-			}),
-	},
-
 	Mutation: {
-		createUser: createSessionResolver
-			.createResolver(async (root, { user }, { dataSources, createSession }) => {
+		createUser: baseResolver.createResolver(
+			async (root, { user }, { dataSources }) => {
 				const { password, ...xs } = user;
-				const userId = await dataSources.db.createUser({
-					...xs,
-					passwordHash: await argon.hash(password),
-				});
-				return createSession(userId);
-			}),
+
+				const userId = await dataSources.db.knex('user')
+					.insert(Database.toRecord({
+						...xs,
+						passwordHash: await argon.hash(password),
+					}))
+					.then(() => dataSources.db.knex('user')
+						.where('username', user.username)
+						.first()
+						.then(userRecord => userRecord.id));
+
+				return dataSources.db.createSession(userId);
+			},
+			(parents, args, ctx, error) => {
+				if (error.message.includes('SQLITE_CONSTRAINT')) throw new DuplicateUserError();
+				throw new InvalidCredentialsError();
+			},
+		),
+
+		createAuthToken: baseResolver.createResolver(async (root, { credentials }, { dataSources }) => {
+			const { passwordHash, ...user } = await dataSources.db.knex('user')
+				.where('username', credentials.username)
+				.first()
+				.then(Database.fromRecord);
+			if (!await argon.verify(passwordHash, credentials.password)) {
+				throw new InvalidCredentialsError();
+			}
+			return dataSources.db.createSession(user.id);
+		}),
+
+		invalidateAuthToken: baseResolver.createResolver(
+			async (root, { token }, { dataSources }) => dataSources.db.session(token)
+				.update('invalidated', true)
+				.then(() => null),
+		),
 	},
 };

@@ -3,7 +3,7 @@
 const { ApolloServer } = require('apollo-server');
 const { formatError } = require('apollo-errors');
 const createSchema = require('./schema');
-const dataSources = require('./datasources');
+const dataSources = require('./data-sources');
 const context = require('./context');
 
 module.exports = function createServer() {

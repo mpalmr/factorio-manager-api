@@ -1,9 +1,7 @@
 'use strict';
 
 const { promisify } = require('util');
-const crypto = require('crypto');
-
-const randomBytes = promisify(crypto.randomBytes);
+const randomBytes = promisify(require('crypto').randomBytes);
 
 exports.createToken = async function (size = 64) {
 	const buffer = await randomBytes(size);
