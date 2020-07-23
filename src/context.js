@@ -1,5 +1,6 @@
 'use strict';
 
 module.exports = function context({ req }) {
-	return { sessionToken: req.get('Authorization') };
+	const sessionToken = req.get('Authorization') || null;
+	return { sessionToken: sessionToken && sessionToken.replace(/^Bearer\s/, '') };
 };
