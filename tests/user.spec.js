@@ -137,15 +137,15 @@ describe('Mutation', () => {
 		});
 	});
 
-	describe('Authentication', () => {
-		const AUTH_TOKEN_QUERY = gql`
-			query GetAuthToken($credentials: CredentialsInput!) {
-				authToken(credentials: $credentials)
+	describe('createAuthToken', () => {
+		const AUTH_TOKEN_MUTATION = gql`
+			mutation createAuthToken($credentials: CredentialsInput!) {
+				createAuthToken(credentials: $credentials)
 			}
 		`;
 
 		test('Can get a new authentication token', async () => {
-			const { query, mutate } = createTestClient(constructTestServer({
+			const { mutate } = createTestClient(constructTestServer({
 				context: () => ({ get: jest.fn() }),
 			}));
 
@@ -159,8 +159,8 @@ describe('Mutation', () => {
 				},
 			});
 
-			const { data, errors } = await query({
-				query: AUTH_TOKEN_QUERY,
+			const { data, errors } = await mutate({
+				query: AUTH_TOKEN_MUTATION,
 				variables: {
 					credentials: {
 						username: 'BobSaget',
@@ -170,7 +170,11 @@ describe('Mutation', () => {
 			});
 
 			expect(errors).toBe(undefined);
-			expect(data.authToken).toHaveLength(88);
+			expect(data.createAuthToken).toHaveLength(88);
 		});
+
+		// TODO: Accss protected data
 	});
+
+	// TODO: ivalidateAuthToken
 });
