@@ -17,10 +17,8 @@ const InvalidCredentailsError = createError('InvalidCredentailsError', {
 });
 
 const authenticationResolver = baseResolver.createResolver(async (parent, args, ctx) => {
-	ctx.user = await ctx.dataSources.db.knex('session')
+	ctx.user = await ctx.dataSources.db.session(ctx.sessionToken)
 		.innerJoin('user', 'user.id', 'session.user_id')
-		.where('session.token', ctx.sessionToken)
-		.where('session.expires', '>=', Date.now())
 		.select('user.*')
 		.first();
 	if (!ctx.user) throw new InvalidCredentailsError();

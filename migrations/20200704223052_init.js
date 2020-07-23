@@ -22,6 +22,7 @@ exports.up = async function (knex) {
 			builder.fk('user_id', 'user', 'id').notNullable();
 			table.string('token', 88).notNullable();
 			table.datetime('expires').notNullable();
+			table.boolean('invalidated').notNullable().defaultTo(false);
 			builder.createdAt();
 		}),
 

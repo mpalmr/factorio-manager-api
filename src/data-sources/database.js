@@ -29,4 +29,11 @@ module.exports = class Database extends SQLDataSource {
 		}));
 		return token;
 	}
+
+	session(token) {
+		return this.knex('session')
+			.where('session.token', token)
+			.where('session.expires', '>=', Date.now())
+			.where('session.invalidated', false);
+	}
 };

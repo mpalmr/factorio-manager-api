@@ -12,6 +12,7 @@ exports.typeDefs = gql`
 
 	extend type Mutation {
 		createUser(user: CredentialsInput!): String!
+		invalidateAuthToken(token: String!): Boolean
 	}
 
 	input CredentialsInput {
@@ -54,5 +55,11 @@ exports.resolvers = {
 					.then(userRecord => userRecord.id));
 			return dataSources.db.createSession(userId);
 		}),
+
+		invalidateAuthToken: baseResolver.createResolver(
+			async (root, { token }, { dataSources }) => dataSources.db.session(token)
+				.update('invalidated', true)
+				.then(() => null),
+		),
 	},
 };
