@@ -8,10 +8,10 @@ insert_final_newline = true
 indent_style = tab
 indent_size = 2
 
-[*.{yml,md,graphql}]
+[*.{yml,md,sh}]
 indent_size = 4
 
-[*.yml]
+[{package.json,*.yml}]
 indent_style = space
 
 [*.md]
