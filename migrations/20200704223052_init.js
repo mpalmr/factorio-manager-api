@@ -4,7 +4,6 @@ const { createTableBuilder } = require('../migration-utils');
 
 exports.up = async function (knex) {
 	await knex.schema.createTable('user', table => {
-		const builder = createTableBuilder(knex, table);
 		table.increments();
 		table
 			.string('username', 40)
@@ -13,7 +12,7 @@ exports.up = async function (knex) {
 		table
 			.text('password_hash')
 			.notNullable();
-		builder.timestamp('created_at');
+		table.timestamps(true, true);
 	});
 
 	return Promise.all([
@@ -31,7 +30,7 @@ exports.up = async function (knex) {
 			table.increments();
 			builder.fk('creator_id', 'user', 'id').notNullable();
 			table.text('name').notNullable();
-			builder.createdAt();
+			table.timestamps(true, true);
 		}),
 	]);
 };

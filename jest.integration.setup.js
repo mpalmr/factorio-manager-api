@@ -6,15 +6,35 @@ const dateMock = require('jest-date-mock');
 const knex = require('knex');
 const knexConfig = require('./knexfile');
 
-beforeAll(async () => {
-	await fs.unlink(path.resolve('db-test.sqlite3'))
+async function removeDb() {
+	return fs.unlink(path.resolve('db-test.sqlite3'))
 		.catch(ex => (ex.code === 'ENOENT' ? null : Promise.reject(ex)));
-	global.mockDb = knex(knexConfig);
+}
+
+beforeAll(async () => {
+	await removeDb();
+	global.mockDb = knex({
+		...knexConfig,
+		connection: {
+			...knexConfig.connection,
+			filename: 'db-test.sqlite3',
+		},
+	});
 	return mockDb.migrate.latest();
+});
+
+beforeEach(async () => {
+	await mockDb('user').del();
+	await Promise.all([mockDb('session').del(), mockDb('game').del()]);
+	return mockDb('sqlite_sequence').whereIn('name', ['user', 'session', 'game']).del();
 });
 
 afterEach(() => {
 	dateMock.clear();
 });
 
-afterAll(async () => mockDb.destroy());
+// TODO: This breaks tests for some reason
+// afterAll(() => {
+// 	await mockDb.destroy();
+// 	return removeDb();
+// });

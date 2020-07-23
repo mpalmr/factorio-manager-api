@@ -1,51 +1,32 @@
 'use strict';
 
 const { SQLDataSource } = require('datasource-sql');
-const argon = require('argon2');
 const { DateTime } = require('luxon');
 const snakecaseKeys = require('snakecase-keys');
 const camelcaseKeys = require('camelcase-keys');
+const { createToken } = require('../util');
 
-function toRecord(row) {
-	return snakecaseKeys(row);
-}
-
-function fromRecord(record) {
-	return camelcaseKeys(record);
-}
-
-module.exports = class DatabaseDatasource extends SQLDataSource {
-	async createUser(user) {
-		await this.knex('user').insert(toRecord({ ...user, createdAt: new Date().toISOString() }));
-		return this.knex('user')
-			.select('id')
-			.where('username', user.username)
-			.first()
-			.then(a => a.id);
+module.exports = class Database extends SQLDataSource {
+	static toRecord(row) {
+		return snakecaseKeys(row);
 	}
 
-	async verifyUser(username, password) {
-		const { passwordHash, ...user } = fromRecord(
-			await this.knex('user').where('username', username).first(),
-		);
-		return argon.verify(passwordHash, password) ? user : null;
+	static fromRecord(record) {
+		const row = camelcaseKeys(record);
+		return row && {
+			...row,
+			// SQLite returns strings that aren't ISO timestamps
+			createdAt: row.createdAt && new Date(new Date(row.createdAt).toISOString()),
+		};
 	}
 
-	createSession(userId, token) {
-		return this.knex('session').insert(toRecord({
+	async createSession(userId, expires = { days: 7 }) {
+		const token = await createToken();
+		await this.knex('session').insert(Database.toRecord({
 			userId,
 			token,
-			expires: DateTime.utc().plus({ days: 7 }).toJSDate(),
+			expires: DateTime.utc().plus(expires).toJSDate(),
 		}));
-	}
-
-	async getSessionUser(token) {
-		return this.knex('session')
-			.innerJoin('user', 'user.id', 'session.userId')
-			.select('user.*')
-			.where('session.token', token)
-			.where('session.expires', '<', new Date())
-			.first()
-			.then(fromRecord);
+		return token;
 	}
 };

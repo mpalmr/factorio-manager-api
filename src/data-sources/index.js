@@ -2,12 +2,12 @@
 
 const knex = require('knex');
 const knexConfig = require('../../knexfile');
-const DatabaseDatasource = require('./database');
-const DockerDatasource = require('./docker');
+const Database = require('./database');
+const Docker = require('./docker');
 
 module.exports = function createDataSource() {
 	return {
-		db: new DatabaseDatasource(knex(knexConfig)),
-		docker: new DockerDatasource(),
+		db: new Database(knex(knexConfig)),
+		docker: new Docker(),
 	};
 };
