@@ -1,5 +1,6 @@
 'use strict';
 
+const { createError } = require('apollo-errors');
 const argon = require('argon2');
 const gql = require('graphql-tag');
 const Database = require('../../data-sources/database');
@@ -24,6 +25,10 @@ exports.typeDefs = gql`
 	}
 `;
 
+const DuplicateUserError = createError('DuplicateUserError', {
+	message: 'Username is already in use',
+});
+
 exports.resolvers = {
 	Mutation: {
 		createUser: baseResolver.createResolver(
@@ -42,7 +47,8 @@ exports.resolvers = {
 
 				return dataSources.db.createSession(userId);
 			},
-			() => {
+			(parents, args, ctx, error) => {
+				if (error.message.includes('SQLITE_CONSTRAINT')) throw new DuplicateUserError();
 				throw new InvalidCredentialsError();
 			},
 		),
