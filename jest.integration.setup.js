@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, 'tests') });
 const fs = require('fs').promises;
 const dateMock = require('jest-date-mock');
 const knex = require('knex');

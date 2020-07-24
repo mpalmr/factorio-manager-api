@@ -1,7 +1,10 @@
 'use strict';
 
+const path = require('path');
+const fs = require('fs').promises;
 const gql = require('graphql-tag');
-const { authenticationResolver } = require('../resolvers');
+const Docker = require('../../data-sources/docker');
+const { authenticationResolver, DuplicantError } = require('../resolvers');
 
 exports.typeDefs = gql`
 	extend type Query {
@@ -9,7 +12,11 @@ exports.typeDefs = gql`
 	}
 
 	extend type Mutation {
-		createGame: Game!
+		createGame(game: CreateGameInput!): Game!
+	}
+
+	input CreateGameInput {
+		name: String! @constraint(minLength: 3, maxLength: 40)
 	}
 
 	type Game {
@@ -29,6 +36,23 @@ exports.resolvers = {
 	},
 
 	Mutation: {
-		createGame: authenticationResolver.createResolver(async () => null),
+		createGame: authenticationResolver.createResolver(async (root, { game }, { dataSources }) => {
+			const containerVolumePath = path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`);
+			await fs.access(containerVolumePath)
+				.catch(ex => (ex.code === 'ENOENT' ? null : Promise.reject(new DuplicantError())));
+			await fs.mkdir(containerVolumePath);
+
+			const name = Docker.toContainerName(game.name);
+			await dataSources.docker.command([
+				'run',
+				'--detatch',
+				`--name ${name}`,
+				'--restart always',
+				'--env ENABLE_GENERATE_NEW_MAP_SAVE=true',
+				'--env SAVE_NAME=tmp',
+				`--volume ${containerVolumePath}`,
+			]
+				.join(' '));
+		}),
 	},
 };

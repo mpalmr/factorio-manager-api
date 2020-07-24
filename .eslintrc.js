@@ -21,6 +21,7 @@ module.exports = {
 				'**/__tests__/*.js',
 				'**/__mocks__/*.js',
 				'tests/**/*.spec.js',
+				'tests/util.js',
 				'jest.integration.setup.js',
 				'jest.setup.js',
 			],

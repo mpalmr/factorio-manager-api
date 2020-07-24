@@ -5,6 +5,10 @@ const { Docker } = require('docker-cli-js');
 const { IMAGE_NAME } = require('../constants');
 
 module.exports = class DockerDatasource extends DataSource {
+	static toContainerName(name) {
+		return `${process.env.CONTAINER_NAMESPACE}_${name}`;
+	}
+
 	constructor(...args) {
 		super(...args);
 		this.docker = new Docker({ echo: process.env.NODE_ENV !== 'production' });
