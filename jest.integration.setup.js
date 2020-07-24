@@ -1,8 +1,9 @@
 'use strict';
 
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, 'tests') });
+require('dotenv').config({ path: path.resolve('.env.test') });
 const fs = require('fs').promises;
+const rmfr = require('rmfr');
 const dateMock = require('jest-date-mock');
 const knex = require('knex');
 const knexConfig = require('./knexfile');
@@ -12,17 +13,26 @@ async function removeDb() {
 		.catch(ex => (ex.code === 'ENOENT' ? null : Promise.reject(ex)));
 }
 
-beforeAll(async () => {
-	await removeDb();
-	global.mockDb = knex({
-		...knexConfig,
-		connection: {
-			...knexConfig.connection,
-			filename: 'db-test.sqlite3',
-		},
-	});
-	return mockDb.migrate.latest();
-});
+const volumesPath = path.resolve(process.env.VOLUME_ROOT);
+
+beforeAll(async () => Promise.all([
+	// Prepare DB
+	removeDb().then(() => {
+		global.mockDb = knex({
+			...knexConfig,
+			connection: {
+				...knexConfig.connection,
+				filename: 'db-test.sqlite3',
+			},
+		});
+		return mockDb.migrate.latest();
+	}),
+	// Prepare volumes folder
+	await fs.access(volumesPath)
+		.then(() => rmfr(volumesPath))
+		.then(() => fs.mkdir(volumesPath))
+		.catch(ex => (ex.code === 'ENOENT' ? null : Promise.reject(ex))),
+]));
 
 beforeEach(async () => {
 	await mockDb('user').del();
@@ -33,6 +43,8 @@ beforeEach(async () => {
 afterEach(() => {
 	dateMock.clear();
 });
+
+afterAll(async () => rmfr(volumesPath));
 
 // TODO: This breaks tests for some reason
 // afterAll(() => {

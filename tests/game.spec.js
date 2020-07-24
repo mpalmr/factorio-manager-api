@@ -7,11 +7,6 @@ const { constructTestServer, createUser } = require('./util');
 
 describe('Mutation', () => {
 	describe('createGame', () => {
-		beforeEach(() => {
-			jest.spyOn(fs, 'access');
-			jest.spyOn(fs, 'mkdir');
-		});
-
 		test('Must be authenticated', async () => {
 			const { mutate } = createTestClient(constructTestServer());
 			const { errors, data } = await mutate({
@@ -56,5 +51,29 @@ describe('Mutation', () => {
 		expect(data).toBeNull();
 		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toBe('Duplicate record found');
+	});
+
+	test('Makes directory for volume', async () => {
+		fs.access.mockRejectedValue({ code: 'ENOENT' });
+		fs.mkdir.mockResolvedValue();
+		const sessionToken = await createUser();
+		const { mutate } = createTestClient(constructTestServer({
+			context: () => ({ sessionToken }),
+		}));
+
+		const { data, errors } = await mutate({
+			mutation: gql`
+				mutation CreateGameNewDirectory($game: CreateGameInput!) {
+					createGame(game: $game) {
+						id
+					}
+				}
+			`,
+			variables: {
+				game: { name: 'mockGameName' },
+			},
+		});
+
+
 	});
 });
