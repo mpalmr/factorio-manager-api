@@ -4,7 +4,7 @@ const { createError } = require('apollo-errors');
 const argon = require('argon2');
 const gql = require('graphql-tag');
 const Database = require('../../data-sources/database');
-const { baseResolver, DuplicantError } = require('../resolvers');
+const { baseResolver, DuplicateError } = require('../resolvers');
 
 exports.typeDefs = gql`
 	extend type Mutation {
@@ -48,7 +48,7 @@ exports.resolvers = {
 				return dataSources.db.createSession(userId);
 			},
 			(parents, args, ctx, error) => {
-				if (error.message.includes('SQLITE_CONSTRAINT')) throw new DuplicantError();
+				if (error.message.includes('SQLITE_CONSTRAINT')) throw new DuplicateError();``
 				throw new InvalidCredentialsError();
 			},
 		),

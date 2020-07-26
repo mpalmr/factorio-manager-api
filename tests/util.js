@@ -5,8 +5,11 @@ const { createTestClient } = require('apollo-server-testing');
 const gql = require('graphql-tag');
 const { formatError } = require('apollo-errors');
 const dateMock = require('jest-date-mock');
+const { Docker } = require('docker-cli-js');
 const dataSources = require('../src/data-sources');
 const createSchema = require('../src/schema');
+
+exports.docker = new Docker({ echo: process.env.DEBUG === 'true' });
 
 function defaultContext() {
 	return { get: jest.fn() };

@@ -27,9 +27,9 @@ exports.up = async function (knex) {
 		knex.schema.createTable('game', table => {
 			const builder = createTableBuilder(knex, table);
 			table.increments();
-			builder.fk('creator_id', 'user', 'id').notNullable();
 			table.string('container_id', 64).notNullable().unique();
-			table.text('name').notNullable();
+			builder.fk('creator_id', 'user', 'id').notNullable();
+			table.text('name').notNullable().unique();
 			table.text('version').notNullable().defaultTo('latest');
 			table.timestamps(true, true);
 		}),

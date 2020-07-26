@@ -1,12 +1,19 @@
 'use strict';
 
+const path = require('path');
 const fs = require('fs').promises;
 const { createTestClient } = require('apollo-server-testing');
+const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
-const { constructTestServer, createUser } = require('./util');
+const rmfr = require('rmfr');
+const { constructTestServer, createUser, docker } = require('./util');
+
+const volumePath = path.resolve(process.env.VOLUME_ROOT);
 
 describe('Mutation', () => {
 	describe('createGame', () => {
+		afterEach(async () => rmfr(volumePath));
+
 		test('Must be authenticated', async () => {
 			const { mutate } = createTestClient(constructTestServer());
 			const { errors, data } = await mutate({
@@ -29,8 +36,10 @@ describe('Mutation', () => {
 	});
 
 	test('Volume of that name should not exist', async () => {
-		fs.access.mockRejectedValue('odam');
-		const sessionToken = await createUser();
+		const [sessionToken] = await Promise.all([
+			await createUser(),
+			fs.mkdir(path.resolve(`${process.env.VOLUME_ROOT}/mockGameName`)),
+		]);
 		const { mutate } = createTestClient(constructTestServer({
 			context: () => ({ sessionToken }),
 		}));
@@ -53,9 +62,7 @@ describe('Mutation', () => {
 		expect(errors[0].message).toBe('Duplicate record found');
 	});
 
-	test('Makes directory for volume', async () => {
-		fs.access.mockRejectedValue({ code: 'ENOENT' });
-		fs.mkdir.mockResolvedValue();
+	test('Successful creation', async () => {
 		const sessionToken = await createUser();
 		const { mutate } = createTestClient(constructTestServer({
 			context: () => ({ sessionToken }),
@@ -63,9 +70,12 @@ describe('Mutation', () => {
 
 		const { data, errors } = await mutate({
 			mutation: gql`
-				mutation CreateGameNewDirectory($game: CreateGameInput!) {
+				mutation CreateGameSuccess($game: CreateGameInput!) {
 					createGame(game: $game) {
 						id
+						name
+						version
+						createdAt
 					}
 				}
 			`,
@@ -74,6 +84,36 @@ describe('Mutation', () => {
 			},
 		});
 
-
+		expect(errors).toBe(undefined);
+		const { createdAt, ...game } = data.createGame;
+		expect(game).toEqual({
+			id: '1',
+			name: 'mockGameName',
+			version: 'latest',
+		});
+		expect(createdAt).toBeInstanceOf(Date);
 	});
+
+	// test('Can retreive creator', async () => {
+	// 	const sessionToken = await createToken();
+	// 	const { mutate } = createTestClient(constructTestServer({
+	// 		context: () => ({ sessionToken }),
+	// 	}));
+
+	// 	const { data, errors } = await mutate({
+	// 		mutation: gql`
+	// 			mutation CreateGameCreator($game: CreateGameInput!) {
+	// 				createGame(game: $game) {
+	// 					creator {
+	// 						id
+	// 						username
+	// 					}
+	// 				}
+	// 			}
+	// 		`,
+	// 		variables: {
+	// 			game: { name: 'mockGameName' },
+	// 		},
+	// 	});
+	// });
 });

@@ -11,11 +11,11 @@ module.exports = class DockerDatasource extends DataSource {
 
 	constructor(...args) {
 		super(...args);
-		this.docker = new Docker({ echo: process.env.NODE_ENV !== 'production' });
+		this.cli = new Docker({ echo: process.env.DEBUG === 'true' });
 	}
 
 	async list() {
-		return this.docker
+		return this.cli
 			.command('ps -a')
 			.then(containers => containers.filter(container => container.image === IMAGE_NAME));
 	}

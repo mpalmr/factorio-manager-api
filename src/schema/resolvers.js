@@ -28,7 +28,7 @@ const authenticationResolver = baseResolver.createResolver(async (parent, args, 
 module.exports = {
 	baseResolver,
 	authenticationResolver,
-	DuplicantError: createError('DuplicantError', {
+	DuplicateError: createError('DuplicateError', {
 		message: 'Duplicate record found',
 	}),
 };
