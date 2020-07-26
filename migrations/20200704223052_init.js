@@ -9,9 +9,7 @@ exports.up = async function (knex) {
 			.string('username', 40)
 			.notNullable()
 			.unique();
-		table
-			.text('password_hash')
-			.notNullable();
+		table.text('password_hash').notNullable();
 		table.timestamps(true, true);
 	});
 
@@ -29,8 +27,10 @@ exports.up = async function (knex) {
 		knex.schema.createTable('game', table => {
 			const builder = createTableBuilder(knex, table);
 			table.increments();
+			table.string('container_id', 64).notNullable().unique();
 			builder.fk('creator_id', 'user', 'id').notNullable();
-			table.text('name').notNullable();
+			table.text('name').notNullable().unique();
+			table.text('version').notNullable().defaultTo('latest');
 			table.timestamps(true, true);
 		}),
 	]);

@@ -12,20 +12,23 @@ const baseResolver = createResolver(
 		: new UnknownError(error)),
 );
 
-const InvalidCredentialsError = createError('InvalidCredentialsError', {
-	message: 'Invalid credentials',
+const UnauthorizedError = createError('UnauthorizedError', {
+	message: 'You must be logged in to view this resource',
 });
 
 const authenticationResolver = baseResolver.createResolver(async (parent, args, ctx) => {
+	if (!ctx.sessionToken) throw new UnauthorizedError();
 	ctx.user = await ctx.dataSources.db.session(ctx.sessionToken)
 		.innerJoin('user', 'user.id', 'session.user_id')
 		.select('user.*')
 		.first();
-	if (!ctx.user) throw new InvalidCredentialsError();
+	if (!ctx.user) throw new UnauthorizedError();
 });
 
 module.exports = {
 	baseResolver,
 	authenticationResolver,
-	InvalidCredentialsError,
+	DuplicateError: createError('DuplicateError', {
+		message: 'Duplicate record found',
+	}),
 };

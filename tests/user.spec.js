@@ -14,10 +14,7 @@ const CREATE_USER_MUTATION = gql`
 describe('typeDefs constraints', () => {
 	describe('CredentialsInput', () => {
 		test('username must have a minimum length of 3', async () => {
-			const { mutate } = createTestClient(constructTestServer({
-				context: () => ({ get: jest.fn() }),
-			}));
-
+			const { mutate } = createTestClient(constructTestServer());
 			const { errors, data } = await mutate({
 				mutation: CREATE_USER_MUTATION,
 				variables: {
@@ -35,10 +32,7 @@ describe('typeDefs constraints', () => {
 		});
 
 		test('username has a max length of 40', async () => {
-			const { mutate } = createTestClient(constructTestServer({
-				context: () => ({ get: jest.fn() }),
-			}));
-
+			const { mutate } = createTestClient(constructTestServer());
 			const { errors, data } = await mutate({
 				mutation: CREATE_USER_MUTATION,
 				variables: {
@@ -56,10 +50,7 @@ describe('typeDefs constraints', () => {
 		});
 
 		test('password must have a minLength of 3', async () => {
-			const { mutate } = createTestClient(constructTestServer({
-				context: () => ({ get: jest.fn() }),
-			}));
-
+			const { mutate } = createTestClient(constructTestServer());
 			const { errors, data } = await mutate({
 				mutation: CREATE_USER_MUTATION,
 				variables: {
@@ -82,10 +73,7 @@ describe('Mutation', () => {
 	describe('createUser', () => {
 		test('Creates a user hashing their password', async () => {
 			dateMock.advanceTo(new Date('2020-01-01'));
-			const { mutate } = createTestClient(constructTestServer({
-				context: () => ({ get: jest.fn() }),
-			}));
-
+			const { mutate } = createTestClient(constructTestServer());
 			const { errors, data } = await mutate({
 				mutation: CREATE_USER_MUTATION,
 				variables: {
@@ -107,10 +95,7 @@ describe('Mutation', () => {
 		});
 
 		test('Cannot create user that already exists by that username', async () => {
-			const { mutate } = createTestClient(constructTestServer({
-				context: () => ({ get: jest.fn() }),
-			}));
-
+			const { mutate } = createTestClient(constructTestServer());
 			await mutate({
 				mutation: CREATE_USER_MUTATION,
 				variables: {
@@ -133,7 +118,7 @@ describe('Mutation', () => {
 
 			expect(data).toBeNull();
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('Username is already in use');
+			expect(errors[0].message).toBe('Duplicate record found');
 		});
 	});
 
@@ -145,10 +130,7 @@ describe('Mutation', () => {
 		`;
 
 		test('Can get a new authentication token', async () => {
-			const { mutate } = createTestClient(constructTestServer({
-				context: () => ({ get: jest.fn() }),
-			}));
-
+			const { mutate } = createTestClient(constructTestServer());
 			await mutate({
 				mutation: CREATE_USER_MUTATION,
 				variables: {
