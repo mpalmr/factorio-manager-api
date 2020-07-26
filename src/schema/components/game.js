@@ -67,19 +67,19 @@ exports.resolvers = {
 				await dataSources.docker.cli.command(`stop ${containerId}`);
 				await rmfr(path.join(containerVolumePath, 'saves', '*'));
 
-				return dataSources.db.knex('game')
+				return dataSources.db.knex.transaction(trx => trx('game')
 					.insert(Database.toRecord({
 						containerId,
 						version,
 						name: game.name,
 						creatorId: user.id,
 					}))
-					.then(() => dataSources.db.knex('game')
+					.then(() => trx('game')
 						.innerJoin('user', 'user.id', 'game.creator_id')
 						.select('game.*')
 						.where('game.name', game.name)
 						.first())
-					.then(Database.fromRecord);
+					.then(Database.fromRecord));
 			},
 		),
 	},
