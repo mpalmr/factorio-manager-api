@@ -76,10 +76,21 @@ exports.resolvers = {
 					}))
 					.then(() => dataSources.db.knex('game')
 						.innerJoin('user', 'user.id', 'game.creator_id')
+						.select('game.*')
 						.where('game.name', game.name)
 						.first())
 					.then(Database.fromRecord);
 			},
 		),
+	},
+
+	Game: {
+		async creator(game, args, { dataSources }) {
+			return dataSources.db.knex('user')
+				.where('id', game.creatorId)
+				.select('user.*')
+				.first()
+				.then(Database.fromRecord);
+		},
 	},
 };

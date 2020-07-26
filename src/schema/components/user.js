@@ -48,7 +48,7 @@ exports.resolvers = {
 				return dataSources.db.createSession(userId);
 			},
 			(parents, args, ctx, error) => {
-				if (error.message.includes('SQLITE_CONSTRAINT')) throw new DuplicateError();``
+				if (error.message.includes('SQLITE_CONSTRAINT')) throw new DuplicateError();
 				throw new InvalidCredentialsError();
 			},
 		),

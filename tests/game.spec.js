@@ -25,7 +25,7 @@ describe('Mutation', () => {
 					}
 				`,
 				variables: {
-					game: { name: 'mockGameName' },
+					game: { name: 'mustAuthenticateContainer' },
 				},
 			});
 
@@ -38,7 +38,7 @@ describe('Mutation', () => {
 	test('Volume of that name should not exist', async () => {
 		const [sessionToken] = await Promise.all([
 			await createUser(),
-			fs.mkdir(path.resolve(`${process.env.VOLUME_ROOT}/mockGameName`)),
+			fs.mkdir(path.resolve(`${process.env.VOLUME_ROOT}/duplicateNameContainer`)),
 		]);
 		const { mutate } = createTestClient(constructTestServer({
 			context: () => ({ sessionToken }),
@@ -53,7 +53,7 @@ describe('Mutation', () => {
 				}
 			`,
 			variables: {
-				game: { name: 'mockGameName' },
+				game: { name: 'duplicateNameContainer' },
 			},
 		});
 
@@ -80,40 +80,55 @@ describe('Mutation', () => {
 				}
 			`,
 			variables: {
-				game: { name: 'mockGameName' },
+				game: { name: 'successContainer' },
 			},
 		});
 
 		expect(errors).toBe(undefined);
-		const { createdAt, ...game } = data.createGame;
-		expect(game).toEqual({
-			id: '1',
-			name: 'mockGameName',
-			version: 'latest',
+		expect(data).toMatchObject({
+			createGame: {
+				id: '1',
+				name: 'successContainer',
+				version: 'latest',
+			},
 		});
-		expect(createdAt).toBeInstanceOf(Date);
+		expect(data.createGame.createdAt).toBeInstanceOf(Date);
 	});
 
-	// test('Can retreive creator', async () => {
-	// 	const sessionToken = await createToken();
-	// 	const { mutate } = createTestClient(constructTestServer({
-	// 		context: () => ({ sessionToken }),
-	// 	}));
+	test('Can retreive creator', async () => {
+		const sessionToken = await createUser();
+		const { mutate } = createTestClient(constructTestServer({
+			context: () => ({ sessionToken }),
+		}));
 
-	// 	const { data, errors } = await mutate({
-	// 		mutation: gql`
-	// 			mutation CreateGameCreator($game: CreateGameInput!) {
-	// 				createGame(game: $game) {
-	// 					creator {
-	// 						id
-	// 						username
-	// 					}
-	// 				}
-	// 			}
-	// 		`,
-	// 		variables: {
-	// 			game: { name: 'mockGameName' },
-	// 		},
-	// 	});
-	// });
+		const { data, errors } = await mutate({
+			mutation: gql`
+				mutation CreateGameCreator($game: CreateGameInput!) {
+					createGame(game: $game) {
+						name
+						creator {
+							id
+							username
+							createdAt
+						}
+					}
+				}
+			`,
+			variables: {
+				game: { name: 'creatorContainer' },
+			},
+		});
+
+		expect(errors).toBe(undefined);
+		expect(data).toMatchObject({
+			createGame: {
+				name: 'creatorContainer',
+				creator: {
+					id: '1',
+					username: 'BobSaget',
+				},
+			},
+		});
+		expect(data.createGame.creator.createdAt).toBeInstanceOf(Date);
+	});
 });
