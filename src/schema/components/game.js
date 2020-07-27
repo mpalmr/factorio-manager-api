@@ -98,10 +98,18 @@ exports.resolvers = {
 		),
 
 		deleteGame: isGameOwnerResolver.createResolver(
-			async (root, { gameId }, { dataSources }) => dataSources.db.knex('game')
-				.where('id', gameId)
-				.del()
-				.then(() => null),
+			async (root, { gameId }, { dataSources }) => {
+				const { containerId, name } = await dataSources.db.knex('game')
+					.where('id', gameId)
+					.select('container_id', 'name')
+					.first()
+					.then(Database.fromRecord);
+
+				await dataSources.docker.cli.command(`rm -f ${containerId}`);
+				await rmfr(path.resolve(`${process.env.VOLUME_ROOT}/${name}`));
+				await dataSources.db.knex('game').where('id', gameId).del();
+				return null;
+			},
 		),
 	},
 

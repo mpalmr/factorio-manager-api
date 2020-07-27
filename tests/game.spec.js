@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { createTestClient } = require('apollo-server-testing');
 const gql = require('graphql-tag');
-const { constructTestServer, createUser } = require('./util');
+const { constructTestServer, createUser, docker } = require('./util');
 const Database = require('../src/data-sources/database');
 
 describe('Query', () => {
@@ -283,11 +283,19 @@ describe('Mutation', () => {
 					context: () => ({ sessionToken }),
 				})));
 
-			await mockDb('game').insert(Database.toRecord({
-				name: 'youDoNotOwnThis',
-				containerId: 'someContainerThatIsNotYours',
-				creatorId: 1,
-			}));
+			const { data: createGameData, error: createGameError } = await mutate({
+				mutation: gql`
+					mutation CreateGameToDelete($game: CreateGameInput!) {
+						createGame(game: $game) {
+							id
+						}
+					}
+				`,
+				variables: {
+					game: { name: 'gameToBeDeleted' },
+				},
+			});
+			expect(createGameError).not.toBeDefined();
 
 			const { data, errors } = await mutate({
 				mutation: gql`
@@ -295,11 +303,11 @@ describe('Mutation', () => {
 						deleteGame(gameId: $gameId)
 					}
 				`,
-				variables: { gameId: '1' },
+				variables: { gameId: createGameData.createGame.id },
 			});
 
-			expect(data).toEqual({ deleteGame: null });
 			expect(errors).not.toBeDefined();
+			expect(data).toEqual({ deleteGame: null });
 			expect(await mockDb('game')).toHaveLength(0);
 		});
 	});
