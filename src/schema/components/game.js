@@ -33,9 +33,18 @@ exports.typeDefs = gql`
 
 exports.resolvers = {
 	Query: {
-		games: authenticationResolver.createResolver(
-			async (root, args, { datasources }) => datasources.docker.list(),
-		),
+		games: authenticationResolver.createResolver(async (root, args, { dataSources }) => {
+			const containers = await dataSources.docker.cli
+				.command(`ps -af name=${process.env.CONTAINER_NAMESPACE}_`)
+				.then(({ containerList }) => containerList.map(Docker.fromContainer));
+
+			return Promise.all(containers.map(container => dataSources.db.knex('game')
+				.where('container_id', 'like', `${container.containerId}%`)
+				.select('id')
+				.first()
+				.then(({ id }) => ({ ...container, id }))))
+				.then(xs => xs.slice().sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10)));
+		}),
 	},
 
 	Mutation: {

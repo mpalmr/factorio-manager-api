@@ -3,17 +3,82 @@
 const path = require('path');
 const fs = require('fs').promises;
 const { createTestClient } = require('apollo-server-testing');
-const dateMock = require('jest-date-mock');
 const gql = require('graphql-tag');
-const rmfr = require('rmfr');
-const { constructTestServer, createUser, docker } = require('./util');
+const { constructTestServer, createUser } = require('./util');
 
-const volumePath = path.resolve(process.env.VOLUME_ROOT);
+describe('Query', () => {
+	describe('games', () => {
+		test('Must be authenticated', async () => {
+			const { query } = createTestClient(constructTestServer());
+			const { errors, data } = await query({
+				query: gql`
+					query GamesAuthRequired {
+						games {
+							id
+						}
+					}
+				`,
+			});
+
+			expect(data).toBeNull();
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('You must be logged in to view this resource');
+		});
+
+		test('Lists all games', async () => {
+			const sessionToken = await createUser();
+			const { query, mutate } = createTestClient(constructTestServer({
+				context: () => ({ sessionToken }),
+			}));
+
+			const { errors: createErrors } = await mutate({
+				mutation: gql`
+					mutation CreateGamesForListing($gameOne: CreateGameInput!, $gameTwo: CreateGameInput!) {
+						gameOne: createGame(game: $gameOne) {
+							id
+						}
+						gameTwo: createGame(game: $gameTwo) {
+							id
+						}
+					}
+				`,
+				variables: {
+					gameOne: { name: 'containerForListingOne' },
+					gameTwo: { name: 'containerForListingTwo' },
+				},
+			});
+			expect(createErrors).not.toBeDefined();
+
+			const { data, errors } = await query({
+				query: gql`
+					query GameListing {
+						games {
+							id
+							name
+						}
+					}
+				`,
+			});
+
+			expect(errors).not.toBeDefined();
+			expect(data).toEqual({
+				games: [
+					{
+						id: '1',
+						name: 'containerForListingOne',
+					},
+					{
+						id: '2',
+						name: 'containerForListingTwo',
+					},
+				],
+			});
+		});
+	});
+});
 
 describe('Mutation', () => {
 	describe('createGame', () => {
-		afterEach(async () => rmfr(volumePath));
-
 		test('Must be authenticated', async () => {
 			const { mutate } = createTestClient(constructTestServer());
 			const { errors, data } = await mutate({
@@ -84,7 +149,7 @@ describe('Mutation', () => {
 			},
 		});
 
-		expect(errors).toBe(undefined);
+		expect(errors).not.toBeDefined();
 		expect(data).toMatchObject({
 			createGame: {
 				id: '1',
@@ -119,7 +184,7 @@ describe('Mutation', () => {
 			},
 		});
 
-		expect(errors).toBe(undefined);
+		expect(errors).not.toBeDefined();
 		expect(data).toMatchObject({
 			createGame: {
 				name: 'creatorContainer',

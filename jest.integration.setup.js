@@ -10,7 +10,7 @@ const knex = require('knex');
 const knexConfig = require('./knexfile');
 const { docker } = require('./tests/util');
 
-jest.setTimeout(20000);
+jest.setTimeout(60000);
 
 const volumesPath = path.resolve(process.env.VOLUME_ROOT);
 

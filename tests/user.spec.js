@@ -25,7 +25,7 @@ describe('typeDefs constraints', () => {
 				},
 			});
 
-			expect(data).toBe(undefined);
+			expect(data).not.toBeDefined();
 			expect(errors).toHaveLength(1);
 			expect(errors[0].extensions.exception.code).toBe('ERR_GRAPHQL_CONSTRAINT_VALIDATION');
 			expect(errors[0].extensions.exception.context[0].arg).toBe('minLength');
@@ -43,7 +43,7 @@ describe('typeDefs constraints', () => {
 				},
 			});
 
-			expect(data).toBe(undefined);
+			expect(data).not.toBeDefined();
 			expect(errors).toHaveLength(1);
 			expect(errors[0].extensions.exception.code).toBe('ERR_GRAPHQL_CONSTRAINT_VALIDATION');
 			expect(errors[0].extensions.exception.context[0].arg).toBe('maxLength');
@@ -61,7 +61,7 @@ describe('typeDefs constraints', () => {
 				},
 			});
 
-			expect(data).toBe(undefined);
+			expect(data).not.toBeDefined();
 			expect(errors).toHaveLength(1);
 			expect(errors[0].extensions.exception.code).toBe('ERR_GRAPHQL_CONSTRAINT_VALIDATION');
 			expect(errors[0].extensions.exception.context[0].arg).toBe('minLength');
@@ -84,7 +84,7 @@ describe('Mutation', () => {
 				},
 			});
 
-			expect(errors).toBe(undefined);
+			expect(errors).not.toBeDefined();
 			expect(data.createUser).toHaveLength(88);
 
 			const { password_hash } = await mockDb('user')
@@ -151,7 +151,7 @@ describe('Mutation', () => {
 				},
 			});
 
-			expect(errors).toBe(undefined);
+			expect(errors).not.toBeDefined();
 			expect(data.createAuthToken).toHaveLength(88);
 		});
 
