@@ -5,6 +5,7 @@ const fs = require('fs').promises;
 const { createTestClient } = require('apollo-server-testing');
 const gql = require('graphql-tag');
 const { constructTestServer, createUser } = require('./util');
+const Database = require('../src/data-sources/database');
 
 describe('Query', () => {
 	describe('games', () => {
@@ -26,10 +27,10 @@ describe('Query', () => {
 		});
 
 		test('Lists all games', async () => {
-			const sessionToken = await createUser();
-			const { query, mutate } = createTestClient(constructTestServer({
-				context: () => ({ sessionToken }),
-			}));
+			const { query, mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
 
 			const { errors: createErrors } = await mutate({
 				mutation: gql`
@@ -128,10 +129,10 @@ describe('Mutation', () => {
 	});
 
 	test('Successful creation', async () => {
-		const sessionToken = await createUser();
-		const { mutate } = createTestClient(constructTestServer({
-			context: () => ({ sessionToken }),
-		}));
+		const { mutate } = await createUser()
+			.then(sessionToken => createTestClient(constructTestServer({
+				context: () => ({ sessionToken }),
+			})));
 
 		const { data, errors } = await mutate({
 			mutation: gql`
@@ -161,10 +162,10 @@ describe('Mutation', () => {
 	});
 
 	test('Can retreive creator', async () => {
-		const sessionToken = await createUser();
-		const { mutate } = createTestClient(constructTestServer({
-			context: () => ({ sessionToken }),
-		}));
+		const { mutate } = await createUser()
+			.then(sessionToken => createTestClient(constructTestServer({
+				context: () => ({ sessionToken }),
+			})));
 
 		const { data, errors } = await mutate({
 			mutation: gql`
@@ -195,5 +196,111 @@ describe('Mutation', () => {
 			},
 		});
 		expect(data.createGame.creator.createdAt).toBeInstanceOf(Date);
+	});
+
+	describe('deleteGame', () => {
+		test('Requires authentication', async () => {
+			const { mutate } = createTestClient(constructTestServer());
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation DeleteGameNoAuth($gameId: ID!) {
+						deleteGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(data).toEqual({ deleteGame: null });
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('You must be logged in to view this resource');
+		});
+
+		test('Game must exist', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation DeleteGameNotFound($gameId: ID!) {
+						deleteGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '100' },
+			});
+
+			expect(data).toEqual({ deleteGame: null });
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('Resource could not be found');
+		});
+
+		test('Must own game', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			const { errors: createUserErrors } = await mutate({
+				mutation: gql`
+					mutation CreateUserDeleteOwnGame($user: CredentialsInput!) {
+						createUser(user: $user)
+					}
+				`,
+				variables: {
+					user: {
+						username: 'SomebodyWhoIsNotYou',
+						password: 'P@ssw0rd',
+					},
+				},
+			});
+			expect(createUserErrors).not.toBeDefined();
+
+			await mockDb('game').insert(Database.toRecord({
+				name: 'youDoNotOwnThis',
+				containerId: 'someContainerThatIsNotYours',
+				creatorId: 2,
+			}));
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation DeleteGameForbidden($gameId: ID!) {
+						deleteGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(data).toEqual({ deleteGame: null });
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('You do not have permissions to view this resource');
+		});
+
+		test('Successful deletion', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			await mockDb('game').insert(Database.toRecord({
+				name: 'youDoNotOwnThis',
+				containerId: 'someContainerThatIsNotYours',
+				creatorId: 1,
+			}));
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation DeleteGameSuccess($gameId: ID!) {
+						deleteGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(data).toEqual({ deleteGame: null });
+			expect(errors).not.toBeDefined();
+			expect(await mockDb('game')).toHaveLength(0);
+		});
 	});
 });

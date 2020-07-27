@@ -6,7 +6,7 @@ const rmfr = require('rmfr');
 const gql = require('graphql-tag');
 const Database = require('../../data-sources/database');
 const Docker = require('../../data-sources/docker');
-const { authenticationResolver, DuplicateError } = require('../resolvers');
+const { authenticationResolver, isGameOwnerResolver, DuplicateError } = require('../resolvers');
 const { FACTORIO_IMAGE_NAME, FACTORIO_TCP_PORT, FACTORIO_UDP_PORT } = require('../../constants');
 
 exports.typeDefs = gql`
@@ -16,6 +16,7 @@ exports.typeDefs = gql`
 
 	extend type Mutation {
 		createGame(game: CreateGameInput!): Game!
+		deleteGame(gameId: ID!): Boolean
 	}
 
 	input CreateGameInput {
@@ -38,12 +39,16 @@ exports.resolvers = {
 				.command(`ps -af name=${process.env.CONTAINER_NAMESPACE}_`)
 				.then(({ containerList }) => containerList.map(Docker.fromContainer));
 
-			return Promise.all(containers.map(container => dataSources.db.knex('game')
-				.where('container_id', 'like', `${container.containerId}%`)
-				.select('id')
-				.first()
-				.then(({ id }) => ({ ...container, id }))))
-				.then(xs => xs.slice().sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10)));
+			return Promise.all(containers
+				.map(container => dataSources.db.knex('game')
+					.where('container_id', 'like', `${container.containerId}%`)
+					.select('id', 'creator_id', 'createdAt')
+					.first()
+					.then(Database.fromRecord)
+					.then(record => ({ ...container, ...record }))))
+				.then(xs => xs
+					.filter(a => a.id)
+					.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10)));
 		}),
 	},
 
@@ -90,6 +95,13 @@ exports.resolvers = {
 						.first())
 					.then(Database.fromRecord));
 			},
+		),
+
+		deleteGame: isGameOwnerResolver.createResolver(
+			async (root, { gameId }, { dataSources }) => dataSources.db.knex('game')
+				.where('id', gameId)
+				.del()
+				.then(() => null),
 		),
 	},
 
