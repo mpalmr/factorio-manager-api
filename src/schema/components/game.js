@@ -35,6 +35,7 @@ exports.typeDefs = gql`
 	type Game {
 		id: ID!
 		name: String! @constraint(minLength: 3, maxLength: 40)
+		isOnline: Boolean!
 		creator: User! @cacheControl(maxAge: 86400)
 		version: String!
 		createdAt: DateTime!
@@ -139,6 +140,11 @@ exports.resolvers = {
 	},
 
 	Game: {
+		async isOnline(game, args, { dataSources }) {
+			const { containerList } = await dataSources.docker.cli.command('ps -q');
+			return Object.values(containerList).includes(game.containerId);
+		},
+
 		async creator(game, args, { dataSources }) {
 			return dataSources.db.knex('user')
 				.where('id', game.creatorId)

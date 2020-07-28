@@ -5,10 +5,7 @@ base_path="$(dirname "$0")"
 eval "$(egrep -v '^#' $base_path/.env | xargs)"
 
 echo "Clean database..."
-db_path="$base_path/db.sqlite3"
-if [[ -f "$db_path" ]]; then
-	rm -f "$db_path"
-fi
+rm -f "$base_path/*.sqlite3"
 NODE_ENV=development npx knex migrate:latest
 
 if [[ ! -z "$(ls -l $VOLUME_ROOT | grep -v .gitkeep)" ]]; then

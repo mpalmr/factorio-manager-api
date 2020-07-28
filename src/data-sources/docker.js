@@ -26,4 +26,9 @@ module.exports = class DockerDataSource extends DataSource {
 		super(...args);
 		this.cli = new Docker({ echo: process.env.DEBUG === 'true' });
 	}
+
+	async getContainerById(id) {
+		const { containerList } = await this.cli.command('ps -q');
+		return Object.values(containerList).includes(id);
+	}
 };
