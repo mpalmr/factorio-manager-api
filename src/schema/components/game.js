@@ -17,7 +17,7 @@ const { FACTORIO_IMAGE_NAME, FACTORIO_TCP_PORT, FACTORIO_UDP_PORT } = require('.
 exports.typeDefs = gql`
 	extend type Query {
 		games: [Game!]!
-		availableVersions: [String!]!
+		availableVersions: [String!]! @cacheControl(maxAge: 3600)
 	}
 
 	extend type Mutation {
@@ -33,7 +33,7 @@ exports.typeDefs = gql`
 	type Game {
 		id: ID!
 		name: String! @constraint(minLength: 3, maxLength: 40)
-		creator: User!
+		creator: User! @cacheControl(maxAge: 86400)
 		version: String!
 		createdAt: DateTime!
 	}
