@@ -23,6 +23,8 @@ exports.typeDefs = gql`
 	extend type Mutation {
 		createGame(game: CreateGameInput!): Game!
 		deleteGame(gameId: ID!): Boolean
+		startGame(gameId: ID!): Boolean
+		stopGame(gameId: ID!): Boolean
 	}
 
 	input CreateGameInput {
@@ -121,6 +123,18 @@ exports.resolvers = {
 				await dataSources.db.knex('game').where('id', gameId).del();
 				return null;
 			},
+		),
+
+		startGame: isGameOwnerResolver.createResolver(
+			async (root, args, { dataSources, game }) => dataSources.docker.cli
+				.command(`start ${game.name}`)
+				.then(() => null),
+		),
+
+		stopGame: isGameOwnerResolver.createResolver(
+			async (root, args, { dataSources, game }) => dataSources.docker.cli
+				.command(`stop ${game.name}`)
+				.then(() => null),
 		),
 	},
 

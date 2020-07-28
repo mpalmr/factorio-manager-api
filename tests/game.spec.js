@@ -311,4 +311,164 @@ describe('Mutation', () => {
 			expect(await mockDb('game')).toHaveLength(0);
 		});
 	});
+
+	describe('startGame', () => {
+		test('Requires authentication', async () => {
+			const { mutate } = createTestClient(constructTestServer());
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation StartGameNoAuth($gameId: ID!) {
+						startGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('You must be logged in to view this resource');
+			expect(data).toEqual({ startGame: null });
+		});
+
+		test('Game must exist', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation StartGameNotFound($gameId: ID!) {
+						startGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '100' },
+			});
+
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('Resource could not be found');
+			expect(data).toEqual({ startGame: null });
+		});
+
+		test('Must own game', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			const { errors: createUserErrors } = await mutate({
+				mutation: gql`
+					mutation CreateUserStartOwnGame($user: CredentialsInput!) {
+						createUser(user: $user)
+					}
+				`,
+				variables: {
+					user: {
+						username: 'SomebodyWhoIsNotYou',
+						password: 'P@ssw0rd',
+					},
+				},
+			});
+			expect(createUserErrors).not.toBeDefined();
+
+			await mockDb('game').insert(Database.toRecord({
+				name: 'youDoNotOwnThis',
+				containerId: 'someContainerThatIsNotYours',
+				creatorId: 2,
+			}));
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation StartGameForbidden($gameId: ID!) {
+						startGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('You do not have permissions to view this resource');
+			expect(data).toEqual({ startGame: null });
+		});
+	});
+
+	describe('stopGame', () => {
+		test('Requires authentication', async () => {
+			const { mutate } = createTestClient(constructTestServer());
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation StopGameNoAuth($gameId: ID!) {
+						stopGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(data).toEqual({ stopGame: null });
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('You must be logged in to view this resource');
+		});
+
+		test('Game must exist', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation StopGameNotFound($gameId: ID!) {
+						stopGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '100' },
+			});
+
+			expect(data).toEqual({ stopGame: null });
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('Resource could not be found');
+		});
+
+		test('Must own game', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			const { errors: createUserErrors } = await mutate({
+				mutation: gql`
+					mutation CreateUserStopOwnGame($user: CredentialsInput!) {
+						createUser(user: $user)
+					}
+				`,
+				variables: {
+					user: {
+						username: 'SomebodyWhoIsNotYou',
+						password: 'P@ssw0rd',
+					},
+				},
+			});
+			expect(createUserErrors).not.toBeDefined();
+
+			await mockDb('game').insert(Database.toRecord({
+				name: 'youDoNotOwnThis',
+				containerId: 'someContainerThatIsNotYours',
+				creatorId: 2,
+			}));
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation StopGameForbidden($gameId: ID!) {
+						stopGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('You do not have permissions to view this resource');
+			expect(data).toEqual({ stopGame: null });
+		});
+	});
 });
