@@ -6,12 +6,18 @@ const rmfr = require('rmfr');
 const gql = require('graphql-tag');
 const Database = require('../../data-sources/database');
 const Docker = require('../../data-sources/docker');
-const { authenticationResolver, isGameOwnerResolver, DuplicateError } = require('../resolvers');
+const {
+	authenticationResolver,
+	isGameOwnerResolver,
+	DuplicateError,
+	baseResolver,
+} = require('../resolvers');
 const { FACTORIO_IMAGE_NAME, FACTORIO_TCP_PORT, FACTORIO_UDP_PORT } = require('../../constants');
 
 exports.typeDefs = gql`
 	extend type Query {
 		games: [Game!]!
+		availableVersions: [String!]!
 	}
 
 	extend type Mutation {
@@ -21,13 +27,14 @@ exports.typeDefs = gql`
 
 	input CreateGameInput {
 		name: String! @constraint(minLength: 3, maxLength: 40)
+		version: String
 	}
 
 	type Game {
 		id: ID!
 		name: String! @constraint(minLength: 3, maxLength: 40)
 		creator: User!
-		version: String! @constraint(pattern: "^(latest|([0-9]+\.){2}[0-9]+)$")
+		version: String!
 		createdAt: DateTime!
 	}
 `;
@@ -50,6 +57,10 @@ exports.resolvers = {
 					.filter(a => a.id)
 					.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10)));
 		}),
+
+		availableVersions: baseResolver.createResolver(
+			async (root, args, { dataSources }) => dataSources.dockerHub.getAvailableVersions(),
+		),
 	},
 
 	Mutation: {
