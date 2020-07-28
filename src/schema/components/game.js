@@ -127,13 +127,13 @@ exports.resolvers = {
 
 		startGame: isGameOwnerResolver.createResolver(
 			async (root, args, { dataSources, game }) => dataSources.docker.cli
-				.command(`start ${game.name}`)
+				.command(`start ${Docker.toContainerName(game.name)}`)
 				.then(() => null),
 		),
 
 		stopGame: isGameOwnerResolver.createResolver(
 			async (root, args, { dataSources, game }) => dataSources.docker.cli
-				.command(`stop ${game.name}`)
+				.command(`stop ${Docker.toContainerName(game.name)}`)
 				.then(() => null),
 		),
 	},

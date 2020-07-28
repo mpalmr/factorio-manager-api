@@ -390,6 +390,41 @@ describe('Mutation', () => {
 			expect(errors[0].message).toBe('You do not have permissions to view this resource');
 			expect(data).toEqual({ startGame: null });
 		});
+
+		test('Successfully start game', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			const { error: startGameError } = await mutate({
+				mutation: gql`
+					mutation CreateGameToDelete($game: CreateGameInput!) {
+						createGame(game: $game) {
+							id
+						}
+					}
+				`,
+				variables: {
+					game: { name: 'gameToBeDeleted' },
+				},
+			});
+			expect(startGameError).not.toBeDefined();
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation StartGameSuccess($gameId: ID!) {
+						startGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(errors).not.toBeDefined();
+			expect(data).toEqual({ startGame: null });
+			return expect(docker.command('ps -f name=fma-test_gameToBeDeleted')
+				.then(({ containerList }) => containerList[0].created)).resolves.toMatch(/seconds\sago$/);
+		});
 	});
 
 	describe('stopGame', () => {
@@ -469,6 +504,50 @@ describe('Mutation', () => {
 			expect(errors).toHaveLength(1);
 			expect(errors[0].message).toBe('You do not have permissions to view this resource');
 			expect(data).toEqual({ stopGame: null });
+		});
+
+		test('Successfully stop game', async () => {
+			const { mutate } = await createUser()
+				.then(sessionToken => createTestClient(constructTestServer({
+					context: () => ({ sessionToken }),
+				})));
+
+			const { error: startGameError } = await mutate({
+				mutation: gql`
+					mutation CreateGameToDelete($game: CreateGameInput!) {
+						createGame(game: $game) {
+							id
+						}
+					}
+				`,
+				variables: {
+					game: { name: 'gameToBeDeleted' },
+				},
+			});
+			expect(startGameError).not.toBeDefined();
+
+			const { errors: stopErrors } = await mutate({
+				mutation: gql`
+					mutation StartGameStopSuccess($gameId: ID!) {
+						startGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			expect(stopErrors).not.toBeDefined();
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation StopGameSuccess($gameId: ID!) {
+						stopGame(gameId: $gameId)
+					}
+				`,
+				variables: { gameId: '1' },
+			});
+
+			return expect(docker.command('ps -f name=fma-test_gameToBeDeleted')
+				.then(({ containerList }) => containerList)).resolves.toHaveLength(0);
 		});
 	});
 });
