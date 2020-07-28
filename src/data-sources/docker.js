@@ -11,6 +11,7 @@ module.exports = class DockerDataSource extends DataSource {
 			name: DockerDataSource.fromContainerName(container.names),
 			containerId: container['container id'],
 			version: container.image.replace(/^.+:/, ''),
+			isOnline: container.status.startsWith('Up '),
 		};
 	}
 
@@ -27,8 +28,9 @@ module.exports = class DockerDataSource extends DataSource {
 		this.cli = new Docker({ echo: process.env.DEBUG === 'true' });
 	}
 
-	async getContainerById(id) {
-		const { containerList } = await this.cli.command('ps -q');
-		return Object.values(containerList).includes(id);
+	async getContainers(name) {
+		const { containerList } = await this.cli
+			.command(`ps -af name=${process.env.CONTAINER_NAMESPACE}_${name}`);
+		return containerList.map(DockerDataSource.fromContainer);
 	}
 };

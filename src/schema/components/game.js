@@ -3,15 +3,11 @@
 const path = require('path');
 const fs = require('fs').promises;
 const rmfr = require('rmfr');
+const { createError } = require('apollo-errors');
 const gql = require('graphql-tag');
 const Database = require('../../data-sources/database');
 const Docker = require('../../data-sources/docker');
-const {
-	authenticationResolver,
-	isGameOwnerResolver,
-	DuplicateError,
-	baseResolver,
-} = require('../resolvers');
+const { authenticationResolver,	DuplicateError, baseResolver } = require('../resolvers');
 const { FACTORIO_IMAGE_NAME, FACTORIO_TCP_PORT, FACTORIO_UDP_PORT } = require('../../constants');
 
 exports.typeDefs = gql`
@@ -23,8 +19,8 @@ exports.typeDefs = gql`
 	extend type Mutation {
 		createGame(game: CreateGameInput!): Game!
 		deleteGame(gameId: ID!): Boolean
-		startGame(gameId: ID!): Boolean
-		stopGame(gameId: ID!): Boolean
+		startGame(gameId: ID!): Game!
+		stopGame(gameId: ID!): Game!
 	}
 
 	input CreateGameInput {
@@ -42,23 +38,51 @@ exports.typeDefs = gql`
 	}
 `;
 
+const NotFoundError = createError('NotFoundError', {
+	message: 'Resource could not be found',
+});
+
+const ForbiddenError = createError('ForbiddenError', {
+	message: 'You do not have permissions to view this resource',
+});
+
+const isGameOwnerResolver = authenticationResolver.createResolver(
+	async (parent, { gameId }, ctx) => {
+		ctx.game = await ctx.dataSources.db.knex('game')
+			.where('id', parseInt(gameId, 10))
+			.first()
+			.then(Database.fromRecord)
+			.then(record => (!record.game ? null : ctx.dataSources.docker.getContainers(record.name)
+				.then(container => ({ ...container, ...record }))));
+		if (!ctx.game) throw new NotFoundError();
+		if (ctx.game.creatorId !== ctx.user.id) throw new ForbiddenError();
+	},
+);
+
+function createUpdateStateResolver(action) {
+	return isGameOwnerResolver.createResolver(
+		async (root, args, { dataSources, game }) => dataSources.docker.cli
+			.command(`${action} ${Docker.toContainerName(game.name)}`)
+			.then(() => ({ ...game, isOnline: action === 'start' })),
+	);
+}
+
 exports.resolvers = {
 	Query: {
 		games: authenticationResolver.createResolver(async (root, args, { dataSources }) => {
-			const containers = await dataSources.docker.cli
-				.command(`ps -af name=${process.env.CONTAINER_NAMESPACE}_`)
-				.then(({ containerList }) => containerList.map(Docker.fromContainer));
+			const containers = await dataSources.docker.getContainers();
 
-			return Promise.all(containers
+			const containersWithRecords = await Promise.all(containers
 				.map(container => dataSources.db.knex('game')
 					.where('container_id', 'like', `${container.containerId}%`)
 					.select('id', 'creator_id', 'createdAt')
 					.first()
 					.then(Database.fromRecord)
-					.then(record => ({ ...container, ...record }))))
-				.then(xs => xs
-					.filter(a => a.id)
-					.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10)));
+					.then(record => ({ ...container, ...record }))));
+
+			return containersWithRecords
+				.filter(container => container.id)
+				.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
 		}),
 
 		availableVersions: baseResolver.createResolver(
@@ -126,25 +150,11 @@ exports.resolvers = {
 			},
 		),
 
-		startGame: isGameOwnerResolver.createResolver(
-			async (root, args, { dataSources, game }) => dataSources.docker.cli
-				.command(`start ${Docker.toContainerName(game.name)}`)
-				.then(() => null),
-		),
-
-		stopGame: isGameOwnerResolver.createResolver(
-			async (root, args, { dataSources, game }) => dataSources.docker.cli
-				.command(`stop ${Docker.toContainerName(game.name)}`)
-				.then(() => null),
-		),
+		startGame: createUpdateStateResolver('start'),
+		stopGame: createUpdateStateResolver('stop'),
 	},
 
 	Game: {
-		async isOnline(game, args, { dataSources }) {
-			const { containerList } = await dataSources.docker.cli.command('ps -q');
-			return Object.values(containerList).includes(game.containerId);
-		},
-
 		async creator(game, args, { dataSources }) {
 			return dataSources.db.knex('user')
 				.where('id', game.creatorId)
