@@ -6,18 +6,20 @@ const { constructTestServer, createUser, docker } = require('./util');
 const Database = require('../src/data-sources/database');
 
 describe('startGame', () => {
+	const START_GAME_MUTATION = gql`
+		mutation StartGame($gameId: ID!) {
+			startGame(gameId: $gameId) {
+				id
+				isOnline
+			}
+		}
+	`;
+
 	test('Requires authentication', async () => {
 		const { mutate } = createTestClient(constructTestServer());
 
 		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation StartGameNoAuth($gameId: ID!) {
-					startGame(gameId: $gameId) {
-						id
-						isOnline
-					}
-				}
-			`,
+			mutation: START_GAME_MUTATION,
 			variables: { gameId: '1' },
 		});
 
@@ -33,14 +35,7 @@ describe('startGame', () => {
 			})));
 
 		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation StartGameNotFound($gameId: ID!) {
-					startGame(gameId: $gameId) {
-						id
-						isOnline
-					}
-				}
-			`,
+			mutation: START_GAME_MUTATION,
 			variables: { gameId: '100' },
 		});
 
@@ -77,14 +72,7 @@ describe('startGame', () => {
 		}));
 
 		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation StartGameForbidden($gameId: ID!) {
-					startGame(gameId: $gameId) {
-						id
-						isOnline
-					}
-				}
-			`,
+			mutation: START_GAME_MUTATION,
 			variables: { gameId: '1' },
 		});
 
@@ -101,50 +89,45 @@ describe('startGame', () => {
 
 		const { error: startGameError } = await mutate({
 			mutation: gql`
-				mutation CreateGameToDelete($game: CreateGameInput!) {
+				mutation CreateGameToStart($game: CreateGameInput!) {
 					createGame(game: $game) {
 						id
 					}
 				}
 			`,
 			variables: {
-				game: { name: 'gameToBeDeleted' },
+				game: { name: 'gameToStart' },
 			},
 		});
 		expect(startGameError).not.toBeDefined();
 
 		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation StartGameSuccess($gameId: ID!) {
-					startGame(gameId: $gameId) {
-						id
-						isOnline
-					}
-				}
-			`,
+			mutation: START_GAME_MUTATION,
 			variables: { gameId: '1' },
 		});
 
 		expect(errors).not.toBeDefined();
 		expect(data).toEqual({ startGame: null });
-		return expect(docker.command('ps -f name=fma-test_gameToBeDeleted')
+		return expect(docker.command('ps -f name=fma-test_gameToStart')
 			.then(({ containerList }) => containerList[0].created)).resolves.toMatch(/seconds\sago$/);
 	});
 });
 
 describe('stopGame', () => {
+	const STOP_GAME_MUTATION = gql`
+		mutation StopGame($gameId: ID!) {
+			stopGame(gameId: $gameId) {
+				id
+				isOnline
+			}
+		}
+	`;
+
 	test('Requires authentication', async () => {
 		const { mutate } = createTestClient(constructTestServer());
 
 		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation StopGameNoAuth($gameId: ID!) {
-					stopGame(gameId: $gameId) {
-						id
-						isOnline
-					}
-				}
-			`,
+			mutation: STOP_GAME_MUTATION,
 			variables: { gameId: '1' },
 		});
 
@@ -160,14 +143,7 @@ describe('stopGame', () => {
 			})));
 
 		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation StopGameNotFound($gameId: ID!) {
-					stopGame(gameId: $gameId) {
-						id
-						isOnline
-					}
-				}
-			`,
+			mutation: STOP_GAME_MUTATION,
 			variables: { gameId: '100' },
 		});
 
@@ -204,14 +180,7 @@ describe('stopGame', () => {
 		}));
 
 		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation StopGameForbidden($gameId: ID!) {
-					stopGame(gameId: $gameId) {
-						id
-						isOnline
-					}
-				}
-			`,
+			mutation: STOP_GAME_MUTATION,
 			variables: { gameId: '1' },
 		});
 
@@ -228,7 +197,7 @@ describe('stopGame', () => {
 
 		const { error: startGameError } = await mutate({
 			mutation: gql`
-				mutation CreateGameToDelete($game: CreateGameInput!) {
+				mutation CreateGameToStop($game: CreateGameInput!) {
 					createGame(game: $game) {
 						id
 					}
@@ -255,14 +224,7 @@ describe('stopGame', () => {
 		expect(stopErrors).not.toBeDefined();
 
 		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation StopGameSuccess($gameId: ID!) {
-					stopGame(gameId: $gameId) {
-						id
-						isOnline
-					}
-				}
-			`,
+			mutation: STOP_GAME_MUTATION,
 			variables: { gameId: '1' },
 		});
 
