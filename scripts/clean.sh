@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
-base_path="$(dirname "$0")"
+base_path="$(dirname "$0")/.."
 eval "$(egrep -v '^#' $base_path/.env | xargs)"
+VOLUME_ROOT="$base_path/$VOLUME_ROOT"
 
 echo "Clean database..."
 rm -f "$base_path/*.sqlite3"
@@ -13,7 +14,7 @@ if [[ ! -z "$(ls -l $VOLUME_ROOT | grep -v .gitkeep)" ]]; then
 	rm -rf "$VOLUME_ROOT/*"
 fi
 
-containers="$(docker ps -qaf name=$CONTAINER_NAMESPACE_)"
+containers="$(docker ps -qaf name=$CONTAINER_NAMESPACE\_)"
 if [[ ! -z "$containers" ]]; then
 	echo "Cleaning containers..."
 	docker rm -vf "$containers"

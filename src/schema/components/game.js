@@ -69,7 +69,9 @@ function createUpdateStateResolver(action) {
 exports.resolvers = {
 	Query: {
 		games: authenticationResolver.createResolver(
-			async (root, args, { dataSources }) => dataSources.db.knex('games').orderBy('created_at'),
+			async (root, args, { dataSources }) => dataSources.db.knex('game')
+				.orderBy('created_at')
+				.then(games => games.map(Database.fromRecord)),
 		),
 
 		availableVersions: baseResolver.createResolver(
