@@ -8,7 +8,6 @@ const gql = require('graphql-tag');
 const Database = require('../../data-sources/database');
 const Docker = require('../../data-sources/docker');
 const { authenticationResolver,	DuplicateError, baseResolver } = require('../resolvers');
-const { FACTORIO_IMAGE_NAME, FACTORIO_TCP_PORT, FACTORIO_UDP_PORT } = require('../../constants');
 
 exports.typeDefs = gql`
 	extend type Query {
@@ -48,14 +47,14 @@ const ForbiddenError = createError('ForbiddenError', {
 
 const isGameOwnerResolver = authenticationResolver.createResolver(
 	async (parent, { gameId }, ctx) => {
-		ctx.game = await ctx.dataSources.db.knex('game')
+		const gameRecord = await ctx.dataSources.db.knex('game')
 			.where('id', parseInt(gameId, 10))
 			.first()
-			.then(Database.fromRecord)
-			.then(record => (!record.game ? null : ctx.dataSources.docker.getContainers(record.name)
-				.then(container => ({ ...container, ...record }))));
-		if (!ctx.game) throw new NotFoundError();
-		if (ctx.game.creatorId !== ctx.user.id) throw new ForbiddenError();
+			.then(Database.fromRecord);
+		if (!gameRecord) throw new NotFoundError();
+		if (gameRecord.creatorId !== ctx.user.id) throw new ForbiddenError();
+		ctx.game = await ctx.dataSources.docker.getContainers(gameRecord.name)
+			.then(([gameContainer]) => ({ ...gameContainer, ...gameRecord }));
 	},
 );
 
@@ -69,21 +68,9 @@ function createUpdateStateResolver(action) {
 
 exports.resolvers = {
 	Query: {
-		games: authenticationResolver.createResolver(async (root, args, { dataSources }) => {
-			const containers = await dataSources.docker.getContainers();
-
-			const containersWithRecords = await Promise.all(containers
-				.map(container => dataSources.db.knex('game')
-					.where('container_id', 'like', `${container.containerId}%`)
-					.select('id', 'creator_id', 'createdAt')
-					.first()
-					.then(Database.fromRecord)
-					.then(record => ({ ...container, ...record }))));
-
-			return containersWithRecords
-				.filter(container => container.id)
-				.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
-		}),
+		games: authenticationResolver.createResolver(
+			async (root, args, { dataSources }) => dataSources.db.knex('games').orderBy('created_at'),
+		),
 
 		availableVersions: baseResolver.createResolver(
 			async (root, args, { dataSources }) => dataSources.dockerHub.getAvailableVersions(),
@@ -97,41 +84,35 @@ exports.resolvers = {
 				const containerVolumePath = path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`);
 				await fs.mkdir(containerVolumePath)
 					.catch(ex => Promise.reject(ex.code === 'EEXIST' ? new DuplicateError() : ex));
+				// TODO: Run this process as usear factorio UID 845
+				// await fs.chown(containerVolumePath, 845, 845);
 
 				// Create docker container
 				const version = game.version || 'latest';
-				const containerId = await dataSources.docker.cli.command([
-					'run',
-					'--detach',
-					`--name ${Docker.toContainerName(game.name)}`,
-					'--restart always',
-					'--env ENABLE_GENERATE_NEW_MAP_SAVE=true',
-					'--env SAVE_NAME=default',
-					`--expose ${FACTORIO_TCP_PORT}/tcp`,
-					`--expose ${FACTORIO_UDP_PORT}/udp`,
-					`--volume ${path.resolve(containerVolumePath)}`,
-					`${FACTORIO_IMAGE_NAME}:${game.version || 'latest'}`,
-				]
-					.join(' '))
-					.then(result => result.containerId);
+				const containerId = await dataSources.docker.run(game.name, game.version);
 
 				// Stop container and remove temporary save file
-				await dataSources.docker.cli.command(`stop ${containerId}`);
+				await dataSources.docker.stop(containerId);
 				await rmfr(path.join(containerVolumePath, 'saves', '*'));
 
-				return dataSources.db.knex.transaction(trx => trx('game')
-					.insert(Database.toRecord({
-						containerId,
-						version,
-						name: game.name,
-						creatorId: user.id,
-					}))
-					.then(() => trx('game')
-						.innerJoin('user', 'user.id', 'game.creator_id')
-						.select('game.*')
-						.where('game.name', game.name)
-						.first())
+				// Create database entry
+				return dataSources.db.knex.transaction(trx => trx('game').insert(Database.toRecord({
+					containerId,
+					version,
+					name: game.name,
+					creatorId: user.id,
+				}))
+					.then(() => trx('game').where('name', game.name).first())
 					.then(Database.fromRecord));
+			},
+			async (root, { game }, { dataSources }, error) => {
+				// Remove container and its volume if any errors occur
+				await Promise.all([
+					dataSources.docker.remove(game.name, true)
+						.catch(ex => (ex.message.includes('No such container') ? null : Promise.reject(ex))),
+					rmfr(path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`)),
+				]);
+				return Promise.reject(error);
 			},
 		),
 
@@ -155,6 +136,10 @@ exports.resolvers = {
 	},
 
 	Game: {
+		async isOnline(game, args, { dataSources }) {
+			return dataSources.docker.isOnline(game.containerId);
+		},
+
 		async creator(game, args, { dataSources }) {
 			return dataSources.db.knex('user')
 				.where('id', game.creatorId)

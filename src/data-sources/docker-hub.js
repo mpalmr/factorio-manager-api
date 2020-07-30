@@ -19,7 +19,7 @@ module.exports = class DockerHubDataSource extends RESTDataSource {
 	// 	return this.get('/v1/repositories/factoriotools/factorio/tags')
 	// 		.then(versions => versions
 	// 			.map(version => version.name)
-	// 			.filter(version => !version.endsWith('-dev') && !/^\d+\.\d+(-dev)?$/.test(version))
+	// 			.filter(version => !/^\d+\.\d+(-dev)?$/.test(version))
 	// 			.sort((a, b) => {
 	// 				// Put non-semver tags on top
 	// 				const isASemver = semverPattern.test(a);

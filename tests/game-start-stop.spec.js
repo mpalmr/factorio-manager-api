@@ -5,6 +5,14 @@ const gql = require('graphql-tag');
 const { constructTestServer, createUser, docker } = require('./util');
 const Database = require('../src/data-sources/database');
 
+const CREATE_GAME_MUTATION = gql`
+	mutation CreateGame($game: CreateGameInput!) {
+		createGame(game: $game) {
+			id
+		}
+	}
+`;
+
 describe('startGame', () => {
 	const START_GAME_MUTATION = gql`
 		mutation StartGame($gameId: ID!) {
@@ -25,7 +33,7 @@ describe('startGame', () => {
 
 		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toBe('You must be logged in to view this resource');
-		expect(data).toEqual({ startGame: null });
+		expect(data).toBeNull();
 	});
 
 	test('Game must exist', async () => {
@@ -41,7 +49,7 @@ describe('startGame', () => {
 
 		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toBe('Resource could not be found');
-		expect(data).toEqual({ startGame: null });
+		expect(data).toBeNull();
 	});
 
 	test('Must own game', async () => {
@@ -50,7 +58,7 @@ describe('startGame', () => {
 				context: () => ({ sessionToken }),
 			})));
 
-		const { errors: createUserErrors } = await mutate({
+		const { data: createOtherUserData, errors: createOtherUserErrors } = await mutate({
 			mutation: gql`
 				mutation CreateUserStartOwnGame($user: CredentialsInput!) {
 					createUser(user: $user)
@@ -63,13 +71,18 @@ describe('startGame', () => {
 				},
 			},
 		});
-		expect(createUserErrors).not.toBeDefined();
+		const { mutate: otherUserMutate } = createTestClient(constructTestServer({
+			context: () => ({ sessionToken: createOtherUserData.createUser }),
+		}))
+		expect(createOtherUserErrors).not.toBeDefined();
 
-		await mockDb('game').insert(Database.toRecord({
-			name: 'youDoNotOwnThis',
-			containerId: 'someContainerThatIsNotYours',
-			creatorId: 2,
-		}));
+		const { errors: createGameErrors } = await otherUserMutate({
+			mutation: CREATE_GAME_MUTATION,
+			variables: {
+				game: { name: 'StartMeUp' },
+			},
+		});
+		expect(createGameErrors).not.toBeDefined();
 
 		const { data, errors } = await mutate({
 			mutation: START_GAME_MUTATION,
@@ -78,7 +91,7 @@ describe('startGame', () => {
 
 		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toBe('You do not have permissions to view this resource');
-		expect(data).toEqual({ startGame: null });
+		expect(data).toBeNull();
 	});
 
 	test('Successfully start game', async () => {
@@ -88,13 +101,7 @@ describe('startGame', () => {
 			})));
 
 		const { error: startGameError } = await mutate({
-			mutation: gql`
-				mutation CreateGameToStart($game: CreateGameInput!) {
-					createGame(game: $game) {
-						id
-					}
-				}
-			`,
+			mutation: CREATE_GAME_MUTATION,
 			variables: {
 				game: { name: 'gameToStart' },
 			},
@@ -107,7 +114,12 @@ describe('startGame', () => {
 		});
 
 		expect(errors).not.toBeDefined();
-		expect(data).toEqual({ startGame: null });
+		expect(data).toEqual({
+			startGame: {
+				id: '1',
+				isOnline: true,
+			},
+		});
 		return expect(docker.command('ps -f name=fma-test_gameToStart')
 			.then(({ containerList }) => containerList[0].created)).resolves.toMatch(/seconds\sago$/);
 	});
@@ -131,9 +143,9 @@ describe('stopGame', () => {
 			variables: { gameId: '1' },
 		});
 
-		expect(data).toEqual({ stopGame: null });
 		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toBe('You must be logged in to view this resource');
+		expect(data).toBeNull();
 	});
 
 	test('Game must exist', async () => {
@@ -147,9 +159,9 @@ describe('stopGame', () => {
 			variables: { gameId: '100' },
 		});
 
-		expect(data).toEqual({ stopGame: null });
 		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toBe('Resource could not be found');
+		expect(data).toBeNull();
 	});
 
 	test('Must own game', async () => {
@@ -186,7 +198,7 @@ describe('stopGame', () => {
 
 		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toBe('You do not have permissions to view this resource');
-		expect(data).toEqual({ stopGame: null });
+		expect(data).toBeNull();
 	});
 
 	test('Successfully stop game', async () => {
@@ -195,19 +207,16 @@ describe('stopGame', () => {
 				context: () => ({ sessionToken }),
 			})));
 
-		const { error: startGameError } = await mutate({
-			mutation: gql`
-				mutation CreateGameToStop($game: CreateGameInput!) {
-					createGame(game: $game) {
-						id
-					}
-				}
-			`,
+		const { data: createGameData, error: createGameError } = await mutate({
+			mutation: CREATE_GAME_MUTATION,
 			variables: {
 				game: { name: 'gameToBeStopped' },
 			},
 		});
-		expect(startGameError).not.toBeDefined();
+		expect(createGameError).not.toBeDefined();
+		expect(createGameData).toEqual({
+			createGame: { id: '1' },
+		});
 
 		const { errors: stopErrors } = await mutate({
 			mutation: gql`
@@ -229,12 +238,11 @@ describe('stopGame', () => {
 		});
 
 		expect(errors).not.toBeDefined();
-		expect(data).toEqual({ stopGame: null });
-		return Promise.all([
-			expect(docker.command('ps -f name=fma-test_gameToBeStopped')
-				.then(({ containerList }) => containerList)).resolves.toHaveLength(0),
-			expect(docker.command('ps -af name=fma-tst_gameToBeStopped'))
-				.then(({ containerList }) => containerList).resolves.toHaveLength(1),
-		]);
+		expect(data).toEqual({
+			stopGame: {
+				id: '1',
+				isOnline: false,
+			},
+		});
 	});
 });
