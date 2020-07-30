@@ -71,10 +71,11 @@ describe('startGame', () => {
 				},
 			},
 		});
+		expect(createOtherUserErrors).not.toBeDefined();
+
 		const { mutate: otherUserMutate } = createTestClient(constructTestServer({
 			context: () => ({ sessionToken: createOtherUserData.createUser }),
-		}))
-		expect(createOtherUserErrors).not.toBeDefined();
+		}));
 
 		const { errors: createGameErrors } = await otherUserMutate({
 			mutation: CREATE_GAME_MUTATION,
