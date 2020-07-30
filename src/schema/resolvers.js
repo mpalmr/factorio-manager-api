@@ -2,7 +2,6 @@
 
 const { createResolver } = require('apollo-resolvers');
 const { createError, isInstance: isApolloError } = require('apollo-errors');
-const Database = require('../data-sources/database');
 
 const UnknownError = createError('UnknownError', { message: 'An unknown error has occured' });
 

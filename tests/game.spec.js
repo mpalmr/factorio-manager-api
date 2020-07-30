@@ -89,9 +89,8 @@ describe('Query', () => {
 			});
 
 			expect(errors).not.toBeDefined();
-			expect(data).toEqual({
-				availableVersions: ['latest', '12.0.1', '12.1.0', '13.0.0', 'stable'],
-			});
+			expect(data.availableVersions)
+				.toEqual(expect.arrayContaining(['latest', '0.13', '0.13-dev', '0.15.11']));
 		});
 	});
 });
