@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { createTestClient } = require('apollo-server-testing');
 const gql = require('graphql-tag');
-const { constructTestServer, createUser, docker } = require('./util');
+const { constructTestServer, createUser } = require('./util');
 const Database = require('../src/data-sources/database');
 
 describe('Query', () => {
@@ -74,6 +74,23 @@ describe('Query', () => {
 					},
 				],
 			});
+		});
+	});
+
+	describe('availableVersions', () => {
+		test('Returns available versions', async () => {
+			const { query } = createTestClient(constructTestServer());
+			const { data, errors } = await query({
+				query: gql`
+					query AvailableVersions {
+						availableVersions
+					}
+				`,
+			});
+
+			expect(errors).not.toBeDefined();
+			expect(data.availableVersions)
+				.toEqual(expect.arrayContaining(['latest', '0.13', '0.13-dev', '0.15.11']));
 		});
 	});
 });

@@ -2,6 +2,7 @@
 
 const { DataSource } = require('apollo-datasource');
 const { Docker } = require('docker-cli-js');
+const { FACTORIO_IMAGE_NAME, FACTORIO_PORT } = require('../constants');
 
 const fromContainerStripPattern = new RegExp(`^${process.env.CONTAINER_NAMESPACE}_`);
 
@@ -11,6 +12,7 @@ module.exports = class DockerDataSource extends DataSource {
 			name: DockerDataSource.fromContainerName(container.names),
 			containerId: container['container id'],
 			version: container.image.replace(/^.+:/, ''),
+			isOnline: container.status.startsWith('Up '),
 		};
 	}
 
@@ -25,5 +27,53 @@ module.exports = class DockerDataSource extends DataSource {
 	constructor(...args) {
 		super(...args);
 		this.cli = new Docker({ echo: process.env.DEBUG === 'true' });
+	}
+
+	async run(
+		name,
+		volumePath,
+		{
+			version = 'latest',
+			factorioPort = FACTORIO_PORT,
+			updateMods = false,
+		} = {},
+	) {
+		return this.cli.command([
+			'run',
+			'--detach',
+			'--restart always',
+			`--name ${DockerDataSource.toContainerName(name)}`,
+			`--volume ${volumePath}`,
+			`--expose ${factorioPort}/udp`,
+			`--env UPDATE_MODS_ON_START=${updateMods}`,
+			`${FACTORIO_IMAGE_NAME}:${version}`,
+		]
+			.filter(Boolean)
+			.join(' '))
+			.then(({ containerId }) => containerId);
+	}
+
+	async isOnline(containerId) {
+		return this.cli.command(`inspect ${containerId}`)
+			.then(result => result.object[0])
+			.then(container => container.State.Status === 'running');
+	}
+
+	async start(conatinerId) {
+		return this.cli.command(`start ${conatinerId}`);
+	}
+
+	async stop(conatinerId) {
+		return this.cli.command(`stop ${conatinerId}`);
+	}
+
+	async remove(id, isName = false) {
+		return this.cli.command(`rm -f ${isName ? DockerDataSource.toContainerName(id) : id}`);
+	}
+
+	async getContainers(name, isId = false) {
+		const prefix = isId ? '' : `${process.env.CONTAINER_NAMESPACE}_`;
+		const { containerList } = await this.cli.command(`ps -af name=${prefix}${name}`);
+		return containerList.map(DockerDataSource.fromContainer);
 	}
 };

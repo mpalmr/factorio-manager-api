@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
-base_path="$(dirname "$0")"
+base_path="$(dirname "$0")/.."
 eval "$(egrep -v '^#' $base_path/.env | xargs)"
+VOLUME_ROOT="$base_path/$VOLUME_ROOT"
 
 echo "Clean database..."
-db_path="$base_path/db.sqlite3"
-if [[ -f "$db_path" ]]; then
-	rm -f "$db_path"
-fi
+rm -f "$base_path/*.sqlite3"
 NODE_ENV=development npx knex migrate:latest
 
 if [[ ! -z "$(ls -l $VOLUME_ROOT | grep -v .gitkeep)" ]]; then
@@ -16,7 +14,7 @@ if [[ ! -z "$(ls -l $VOLUME_ROOT | grep -v .gitkeep)" ]]; then
 	rm -rf "$VOLUME_ROOT/*"
 fi
 
-containers="$(docker ps -qaf name=$CONTAINER_NAMESPACE_)"
+containers="$(docker ps -qaf name=$CONTAINER_NAMESPACE\_)"
 if [[ ! -z "$containers" ]]; then
 	echo "Cleaning containers..."
 	docker rm -vf "$containers"
