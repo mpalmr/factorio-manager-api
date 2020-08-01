@@ -187,9 +187,10 @@ describe('stopGame', () => {
 		expect(createUserErrors).not.toBeDefined();
 
 		await mockDb('game').insert(Database.toRecord({
+			creatorId: 2,
 			name: 'youDoNotOwnThis',
 			containerId: 'someContainerThatIsNotYours',
-			creatorId: 2,
+			port: 8080,
 		}));
 
 		const { data, errors } = await mutate({

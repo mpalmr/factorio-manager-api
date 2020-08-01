@@ -278,6 +278,7 @@ describe('Mutation', () => {
 				name: 'youDoNotOwnThis',
 				containerId: 'someContainerThatIsNotYours',
 				creatorId: 2,
+				port: 8080,
 			}));
 
 			const { data, errors } = await mutate({
