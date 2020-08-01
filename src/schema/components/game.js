@@ -25,6 +25,7 @@ exports.typeDefs = gql`
 	input CreateGameInput {
 		name: String! @constraint(minLength: 3, maxLength: 40)
 		version: String
+		port: Int @constraint(min: 1024, max: 65535)
 	}
 
 	type Game {
@@ -33,6 +34,7 @@ exports.typeDefs = gql`
 		isOnline: Boolean!
 		creator: User! @cacheControl(maxAge: 86400)
 		version: String!
+		port: Int! @constraint(min: 1024, max: 65535)
 		createdAt: DateTime!
 	}
 `;
@@ -89,9 +91,23 @@ exports.resolvers = {
 				// TODO: Run this process as usear factorio UID 845
 				// await fs.chown(containerVolumePath, 845, 845);
 
-				// Create docker container
+				// Create docker container_id
+				async function findAvailablePort() {
+					const portsInUse = await dataSources.db.knex('game')
+						.select('port')
+						.then(games => games.map(a => a.port));
+					function generatePort() {
+						const port = Math.floor(Math.random() * (65535 - 1024) + 1024);
+						return portsInUse.includes(port) ? generatePort() : port;
+					}
+					return generatePort();
+				}
+				const port = game.port || await findAvailablePort();
+
 				const version = game.version || 'latest';
-				const containerId = await dataSources.docker.run(game.name, game.version);
+				const containerId = await dataSources.docker.run(game.name, game.version, {
+					factorioPort: game.port || await findAvailablePort(),
+				});
 
 				// Stop container and remove temporary save file
 				await dataSources.docker.stop(containerId);
@@ -101,6 +117,7 @@ exports.resolvers = {
 				return dataSources.db.knex.transaction(trx => trx('game').insert(Database.toRecord({
 					containerId,
 					version,
+					port,
 					name: game.name,
 					creatorId: user.id,
 				}))

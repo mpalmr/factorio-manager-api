@@ -31,6 +31,11 @@ exports.up = async function (knex) {
 			builder.fk('creator_id', 'user', 'id').notNullable();
 			table.text('name').notNullable().unique();
 			table.text('version').notNullable().defaultTo('latest');
+			table
+				.integer('port')
+				.unsigned()
+				.notNullable()
+				.unique();
 			table.timestamps(true, true);
 		}),
 	]);
