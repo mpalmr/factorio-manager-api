@@ -200,36 +200,6 @@ describe('Mutation', () => {
 			});
 			expect(data.createGame.creator.createdAt).toBeInstanceOf(Date);
 		});
-
-		test('Generates a ranom port if not assigned one', async () => {
-			const { mutate } = await createTestClientSession();
-
-			const { data, errors } = await mutate({
-				mutation: gql`
-					mutation CreateGamesForPorts($gameNoPort: CreateGameInput!, $gameWithPort: CreateGameInput!) {
-						gameNoPort: createGame(game: $gameNoPort) {
-							id
-							name
-							port
-						}
-						gameWithPort: createGame(game: $gameWithPort) {
-							id
-							name
-							port
-						}
-					}
-				`,
-				variables: {
-					gameNoPort: { name: 'gameNoPort' },
-					gameWithPort: {
-						name: 'gameWithPort',
-						port: 4100,
-					},
-				},
-			});
-
-			expect(errors).not.toBeDefined();
-		});
 	});
 
 	describe('deleteGame', () => {

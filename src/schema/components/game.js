@@ -25,7 +25,6 @@ exports.typeDefs = gql`
 	input CreateGameInput {
 		name: String! @constraint(minLength: 3, maxLength: 40)
 		version: String
-		port: Int @constraint(min: 1024, max: 65535)
 	}
 
 	type Game {
@@ -102,12 +101,10 @@ exports.resolvers = {
 					}
 					return generatePort();
 				}
-				const port = game.port || await findAvailablePort();
+				const factorioPort = game.port || await findAvailablePort();
 
 				const version = game.version || 'latest';
-				const containerId = await dataSources.docker.run(game.name, game.version, {
-					factorioPort: game.port || await findAvailablePort(),
-				});
+				const containerId = await dataSources.docker.run(game.name, game.version, { factorioPort });
 
 				// Stop container and remove temporary save file
 				await dataSources.docker.stop(containerId);
@@ -117,7 +114,7 @@ exports.resolvers = {
 				return dataSources.db.knex.transaction(trx => trx('game').insert(Database.toRecord({
 					containerId,
 					version,
-					port,
+					port: factorioPort,
 					name: game.name,
 					creatorId: user.id,
 				}))
