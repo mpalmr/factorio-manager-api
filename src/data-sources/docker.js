@@ -33,8 +33,8 @@ module.exports = class DockerDataSource extends DataSource {
 		name,
 		volumePath,
 		{
+			factorioPort,
 			version = 'latest',
-			factorioPort = FACTORIO_PORT,
 			updateMods = false,
 		} = {},
 	) {
@@ -44,7 +44,7 @@ module.exports = class DockerDataSource extends DataSource {
 			'--restart always',
 			`--name ${DockerDataSource.toContainerName(name)}`,
 			`--volume ${volumePath}`,
-			`--expose ${factorioPort}/udp`,
+			`-p ${factorioPort}:${FACTORIO_PORT}/udp`,
 			`--env UPDATE_MODS_ON_START=${updateMods}`,
 			`${FACTORIO_IMAGE_NAME}:${version}`,
 		]

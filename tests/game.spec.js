@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { createTestClient } = require('apollo-server-testing');
 const gql = require('graphql-tag');
-const { constructTestServer, createUser } = require('./util');
+const { createTestClientSession, constructTestServer } = require('./util');
 const Database = require('../src/data-sources/database');
 
 describe('Query', () => {
@@ -27,11 +27,7 @@ describe('Query', () => {
 		});
 
 		test('Lists all games', async () => {
-			const { query, mutate } = await createUser()
-				.then(sessionToken => createTestClient(constructTestServer({
-					context: () => ({ sessionToken }),
-				})));
-
+			const { query, mutate } = await createTestClientSession();
 			const { errors: createErrors } = await mutate({
 				mutation: gql`
 					mutation CreateGamesForListing($gameOne: CreateGameInput!, $gameTwo: CreateGameInput!) {
@@ -116,103 +112,94 @@ describe('Mutation', () => {
 			expect(errors).toHaveLength(1);
 			expect(errors[0].message).toBe('You must be logged in to view this resource');
 		});
-	});
 
-	test('Volume of that name should not exist', async () => {
-		const [sessionToken] = await Promise.all([
-			await createUser(),
-			fs.mkdir(path.resolve(`${process.env.VOLUME_ROOT}/duplicateNameContainer`)),
-		]);
-		const { mutate } = createTestClient(constructTestServer({
-			context: () => ({ sessionToken }),
-		}));
+		test('Volume of that name should not exist', async () => {
+			const [{ mutate }] = await Promise.all([
+				await createTestClientSession(),
+				fs.mkdir(path.resolve(`${process.env.VOLUME_ROOT}/duplicateNameContainer`)),
+			]);
 
-		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation CreateGameVolumeExists($game: CreateGameInput!) {
-					createGame(game: $game) {
-						id
-					}
-				}
-			`,
-			variables: {
-				game: { name: 'duplicateNameContainer' },
-			},
-		});
-
-		expect(data).toBeNull();
-		expect(errors).toHaveLength(1);
-		expect(errors[0].message).toBe('Duplicate record found');
-	});
-
-	test('Successful creation', async () => {
-		const { mutate } = await createUser()
-			.then(sessionToken => createTestClient(constructTestServer({
-				context: () => ({ sessionToken }),
-			})));
-
-		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation CreateGameSuccess($game: CreateGameInput!) {
-					createGame(game: $game) {
-						id
-						name
-						version
-						createdAt
-					}
-				}
-			`,
-			variables: {
-				game: { name: 'successContainer' },
-			},
-		});
-
-		expect(errors).not.toBeDefined();
-		expect(data).toMatchObject({
-			createGame: {
-				id: '1',
-				name: 'successContainer',
-				version: 'latest',
-			},
-		});
-		expect(data.createGame.createdAt).toBeInstanceOf(Date);
-	});
-
-	test('Can retreive creator', async () => {
-		const { mutate } = await createUser()
-			.then(sessionToken => createTestClient(constructTestServer({
-				context: () => ({ sessionToken }),
-			})));
-
-		const { data, errors } = await mutate({
-			mutation: gql`
-				mutation CreateGameCreator($game: CreateGameInput!) {
-					createGame(game: $game) {
-						name
-						creator {
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation CreateGameVolumeExists($game: CreateGameInput!) {
+						createGame(game: $game) {
 							id
-							username
+						}
+					}
+				`,
+				variables: {
+					game: { name: 'duplicateNameContainer' },
+				},
+			});
+
+			expect(data).toBeNull();
+			expect(errors).toHaveLength(1);
+			expect(errors[0].message).toBe('Duplicate record found');
+		});
+
+		test('Successful creation', async () => {
+			const { mutate } = await createTestClientSession();
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation CreateGameSuccess($game: CreateGameInput!) {
+						createGame(game: $game) {
+							id
+							name
+							version
 							createdAt
 						}
 					}
-				}
-			`,
-			variables: {
-				game: { name: 'creatorContainer' },
-			},
+				`,
+				variables: {
+					game: { name: 'successContainer' },
+				},
+			});
+
+			expect(errors).not.toBeDefined();
+			expect(data).toMatchObject({
+				createGame: {
+					id: '1',
+					name: 'successContainer',
+					version: 'latest',
+				},
+			});
+			expect(data.createGame.createdAt).toBeInstanceOf(Date);
 		});
 
-		expect(errors).not.toBeDefined();
-		expect(data).toMatchObject({
-			createGame: {
-				name: 'creatorContainer',
-				creator: {
-					id: '1',
-					username: 'BobSaget',
+		test('Can retreive creator', async () => {
+			const { mutate } = await createTestClientSession();
+
+			const { data, errors } = await mutate({
+				mutation: gql`
+					mutation CreateGameCreator($game: CreateGameInput!) {
+						createGame(game: $game) {
+							name
+							creator {
+								id
+								username
+								createdAt
+							}
+						}
+					}
+				`,
+				variables: {
+					game: { name: 'creatorContainer' },
 				},
-			},
+			});
+
+			expect(errors).not.toBeDefined();
+			expect(data).toMatchObject({
+				createGame: {
+					name: 'creatorContainer',
+					creator: {
+						id: '1',
+						username: 'BobSaget',
+					},
+				},
+			});
+			expect(data.createGame.creator.createdAt).toBeInstanceOf(Date);
 		});
-		expect(data.createGame.creator.createdAt).toBeInstanceOf(Date);
 	});
 
 	describe('deleteGame', () => {
@@ -234,10 +221,7 @@ describe('Mutation', () => {
 		});
 
 		test('Game must exist', async () => {
-			const { mutate } = await createUser()
-				.then(sessionToken => createTestClient(constructTestServer({
-					context: () => ({ sessionToken }),
-				})));
+			const { mutate } = await createTestClientSession();
 
 			const { data, errors } = await mutate({
 				mutation: gql`
@@ -254,10 +238,7 @@ describe('Mutation', () => {
 		});
 
 		test('Must own game', async () => {
-			const { mutate } = await createUser()
-				.then(sessionToken => createTestClient(constructTestServer({
-					context: () => ({ sessionToken }),
-				})));
+			const { mutate } = await createTestClientSession();
 
 			const { errors: createUserErrors } = await mutate({
 				mutation: gql`
@@ -278,6 +259,7 @@ describe('Mutation', () => {
 				name: 'youDoNotOwnThis',
 				containerId: 'someContainerThatIsNotYours',
 				creatorId: 2,
+				port: 8080,
 			}));
 
 			const { data, errors } = await mutate({
@@ -295,10 +277,7 @@ describe('Mutation', () => {
 		});
 
 		test('Successful deletion', async () => {
-			const { mutate } = await createUser()
-				.then(sessionToken => createTestClient(constructTestServer({
-					context: () => ({ sessionToken }),
-				})));
+			const { mutate } = await createTestClientSession();
 
 			const { data: createGameData, error: createGameError } = await mutate({
 				mutation: gql`

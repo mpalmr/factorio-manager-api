@@ -42,3 +42,10 @@ exports.createUser = async function ({ username = 'BobSaget', password = 'P@ssw0
 	dateMock.clear();
 	return data.createUser;
 };
+
+exports.createTestClientSession = async function () {
+	return exports.createUser()
+		.then(sessionToken => createTestClient(exports.constructTestServer({
+			context: () => ({ sessionToken }),
+		})));
+};
