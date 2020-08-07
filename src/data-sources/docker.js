@@ -55,8 +55,7 @@ module.exports = class DockerDataSource extends DataSource {
 
 	async isOnline(containerId) {
 		return this.cli.command(`inspect ${containerId}`)
-			.then(result => result.object[0])
-			.then(container => container.State.Status === 'running');
+			.then(result => result.object[0].State.Status === 'running');
 	}
 
 	async start(conatinerId) {

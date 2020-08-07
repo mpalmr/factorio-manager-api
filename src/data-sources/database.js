@@ -36,4 +36,12 @@ module.exports = class Database extends SQLDataSource {
 			.where('session.expires', '>=', Date.now())
 			.where('session.invalidated', false);
 	}
+
+	async getContainerId(gameId) {
+		return this.knex('game')
+			.where('id', gameId)
+			.select('container_id')
+			.first()
+			.then(Database.fromRecord);
+	}
 };
