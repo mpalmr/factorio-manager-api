@@ -10,7 +10,7 @@ module.exports = class DockerHubDataSource extends RESTDataSource {
 		this.baseURL = 'https://registry.hub.docker.com/';
 	}
 
-	async getAvailableVersions() {
+	async getVersions() {
 		return this.get('/v1/repositories/factoriotools/factorio/tags')
 			.then(versions => versions.map(version => version.name));
 	}
