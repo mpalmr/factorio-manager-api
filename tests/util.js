@@ -43,8 +43,8 @@ exports.createUser = async function ({ username = 'BobSaget', password = 'P@ssw0
 	return data.createUser;
 };
 
-exports.createTestClientSession = async function () {
-	return exports.createUser()
+exports.createTestClientSession = async function (...args) {
+	return exports.createUser(...args)
 		.then(sessionToken => createTestClient(exports.constructTestServer({
 			context: () => ({ sessionToken }),
 		})));

@@ -6,6 +6,7 @@ const { DateTimeResolver } = require('graphql-scalars');
 const baseTypeDefs = require('./base-typedefs');
 const user = require('./components/user');
 const game = require('./components/game');
+const version = require('./components/version');
 
 function applySchemaComponent(base, ...components) {
 	return components.reduce((acc, { typeDefs, resolvers }) => {
@@ -38,5 +39,5 @@ module.exports = function createSchema() {
 			Query: {},
 			Mutation: {},
 		},
-	}, user, game));
+	}, user, game, version));
 };
