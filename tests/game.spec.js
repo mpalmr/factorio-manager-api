@@ -4,8 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { createTestClient } = require('apollo-server-testing');
 const gql = require('graphql-tag');
-const { createTestClientSession, constructTestServer, createUser } = require('./util');
-const Database = require('../src/data-sources/database');
+const { createTestClientSession, constructTestServer } = require('./util');
 
 describe('Query', () => {
 	describe('games', () => {
@@ -29,6 +28,7 @@ describe('Query', () => {
 
 		test('Lists all games', async () => {
 			const { query, mutate } = await createTestClientSession();
+
 			const { errors: createErrors } = await mutate({
 				mutation: gql`
 					mutation CreateGamesForListing($gameOne: CreateGameInput!, $gameTwo: CreateGameInput!) {
@@ -286,7 +286,7 @@ describe('Mutation', () => {
 
 			expect(errors).toHaveLength(1);
 			expect(errors[0].message).toBe('You must be logged in to view this resource');
-			expect(data).toEqual({ updateGame: null });
+			expect(data).toBeNull();
 		});
 
 		test('Game must exist', async () => {
@@ -296,39 +296,48 @@ describe('Mutation', () => {
 				mutation: UPDATE_GAME_MUTATION,
 				variables: {
 					game: {
-						id: '2',
+						id: '200',
 						name: 'wer',
 					},
 				},
 			});
 
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('You must be logged in to view this resource');
-			expect(data).toEqual({ deleteGame: null });
+			expect(errors[0].message).toBe('Resource could not be found');
+			expect(data).toBeNull();
 		});
 
 		test('Must own game', async () => {
 			const { mutate } = await createTestClientSession();
-			await createUser({ username: 'notBobSaget' });
+			const { mutate: otherUserMutate } = await createTestClientSession({ username: 'notBobSaget' });
 
-			await mockDb('game').insert(Database.toRecord({
-				name: 'nameofthegame',
-				containerId: 'Iamacontainer',
-				creatorId: 2,
-				port: 9000,
-			}));
+			const { errors: createErrors, data: createData } = await otherUserMutate({
+				mutation: gql`
+					mutation CreateGame($game: CreateGameInput!) {
+						createGame(game: $game) {
+							id
+						}
+					}
+				`,
+				variables: {
+					game: { name: 'asdf' },
+				},
+			});
+			expect(createErrors).not.toBeDefined();
 
 			const { data, errors } = await mutate({
 				mutation: UPDATE_GAME_MUTATION,
 				variables: {
-					id: '1',
-					name: 'omgwow',
+					game: {
+						id: createData.createGame.id,
+						name: 'omgwow',
+					},
 				},
 			});
 
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('You must be logged in to view this resource');
-			expect(data).toEqual({ updateGame: null });
+			expect(errors[0].message).toBe('You do not have permissions to view this resource');
+			expect(data).toBeNull();
 		});
 	});
 
@@ -347,9 +356,9 @@ describe('Mutation', () => {
 				variables: { gameId: '1' },
 			});
 
-			expect(data).toEqual({ deleteGame: null });
 			expect(errors).toHaveLength(1);
 			expect(errors[0].message).toBe('You must be logged in to view this resource');
+			expect(data).toEqual({ deleteGame: null });
 		});
 
 		test('Game must exist', async () => {
@@ -360,40 +369,37 @@ describe('Mutation', () => {
 				variables: { gameId: '100' },
 			});
 
-			expect(data).toEqual({ deleteGame: null });
 			expect(errors).toHaveLength(1);
 			expect(errors[0].message).toBe('Resource could not be found');
+			expect(data).toEqual({ deleteGame: null });
 		});
 
 		test('Must own game', async () => {
 			const { mutate } = await createTestClientSession();
+			const { mutate: otherUserMutate } = await createTestClientSession({ username: 'notBobSaget' });
 
-			const { errors: createUserErrors } = await mutate({
-				mutation: gql``,
+			const { error: createError } = await otherUserMutate({
+				mutation: gql`
+					mutation CreateGame($game: CreateGameInput!) {
+						createGame(game: $game) {
+							id
+						}
+					}
+				`,
 				variables: {
-					user: {
-						username: 'SomebodyWhoIsNotYou',
-						password: 'P@ssw0rd',
-					},
+					game: { name: 'mockGame' },
 				},
 			});
-			expect(createUserErrors).not.toBeDefined();
-
-			await mockDb('game').insert(Database.toRecord({
-				name: 'youDoNotOwnThis',
-				containerId: 'someContainerThatIsNotYours',
-				creatorId: 2,
-				port: 8080,
-			}));
+			expect(createError).not.toBeDefined();
 
 			const { data, errors } = await mutate({
 				mutation: DELETE_GAME_MUTATION,
 				variables: { gameId: '1' },
 			});
 
-			expect(data).toEqual({ deleteGame: null });
 			expect(errors).toHaveLength(1);
 			expect(errors[0].message).toBe('You do not have permissions to view this resource');
+			expect(data).toEqual({ deleteGame: null });
 		});
 
 		test('Successful deletion', async () => {
