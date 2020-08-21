@@ -3,72 +3,14 @@ import * as dateMock from 'jest-date-mock';
 import gql from 'graphql-tag';
 import { constructTestServer } from './util';
 
-const CREATE_USER_MUTATION = gql`
-	mutation CreateUser($user: CredentialsInput!) {
-		createUser(user: $user)
-	}
-`;
-
-describe('typeDefs constraints', () => {
-	describe('CredentialsInput', () => {
-		test('username must have a minimum length of 3', async () => {
-			const { mutate } = createTestClient(constructTestServer());
-			const { errors, data } = await mutate({
-				mutation: CREATE_USER_MUTATION,
-				variables: {
-					user: {
-						username: 'ay',
-						password: 'P@ssw0rd',
-					},
-				},
-			});
-
-			expect(data).not.toBeDefined();
-			expect(errors).toHaveLength(1);
-			expect(errors[0].extensions.exception.code).toBe('ERR_GRAPHQL_CONSTRAINT_VALIDATION');
-			expect(errors[0].extensions.exception.context[0].arg).toBe('minLength');
-		});
-
-		test('username has a max length of 40', async () => {
-			const { mutate } = createTestClient(constructTestServer());
-			const { errors, data } = await mutate({
-				mutation: CREATE_USER_MUTATION,
-				variables: {
-					user: {
-						username: 'ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy',
-						password: 'P@ssw0rd',
-					},
-				},
-			});
-
-			expect(data).not.toBeDefined();
-			expect(errors).toHaveLength(1);
-			expect(errors[0].extensions.exception.code).toBe('ERR_GRAPHQL_CONSTRAINT_VALIDATION');
-			expect(errors[0].extensions.exception.context[0].arg).toBe('maxLength');
-		});
-
-		test('password must have a minLength of 3', async () => {
-			const { mutate } = createTestClient(constructTestServer());
-			const { errors, data } = await mutate({
-				mutation: CREATE_USER_MUTATION,
-				variables: {
-					user: {
-						username: 'Worksplopalis',
-						password: 'ay',
-					},
-				},
-			});
-
-			expect(data).not.toBeDefined();
-			expect(errors).toHaveLength(1);
-			expect(errors[0].extensions.exception.code).toBe('ERR_GRAPHQL_CONSTRAINT_VALIDATION');
-			expect(errors[0].extensions.exception.context[0].arg).toBe('minLength');
-		});
-	});
-});
-
 describe('Mutation', () => {
 	describe('createUser', () => {
+		const CREATE_USER_MUTATION = gql`
+			mutation CreateUser($user: CredentialsInput!) {
+				createUser(user: $user)
+			}
+		`;
+
 		test('Creates a user hashing their password', async () => {
 			dateMock.advanceTo(new Date('2020-01-01'));
 			const { mutate } = createTestClient(constructTestServer());
@@ -124,6 +66,12 @@ describe('Mutation', () => {
 		const AUTH_TOKEN_MUTATION = gql`
 			mutation createAuthToken($credentials: CredentialsInput!) {
 				createAuthToken(credentials: $credentials)
+			}
+		`;
+
+		const CREATE_USER_MUTATION = gql`
+			mutation CreateUser($user: CredentialsInput!) {
+				createUser(user: $user)
 			}
 		`;
 

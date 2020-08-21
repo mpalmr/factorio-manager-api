@@ -6,7 +6,7 @@ exports.up = async function (knex) {
 	await knex.schema.createTable('user', table => {
 		table.increments();
 		table
-			.string('username', 40)
+			.text('username')
 			.notNullable()
 			.unique();
 		table.text('password_hash').notNullable();

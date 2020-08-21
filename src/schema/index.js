@@ -1,12 +1,15 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { constraintDirective, constraintDirectiveTypeDefs } from 'graphql-constraint-directive';
 import gql from 'fake-tag';
-import * as types from './types';
-import * as user from './components/user';
-import * as game from './components/game';
-import * as version from './components/version';
+import { DateTimeResolver, PortResolver } from 'graphql-scalars';
+import * as user from './user';
+import * as game from './game';
+import * as version from './version';
 
 const baseTypeDefs = gql`
+	scalar DateTime
+	scalar Port
+
 	type Query {
 		_empty: String
 	}
@@ -26,19 +29,23 @@ const baseTypeDefs = gql`
 	}
 `;
 
+const baseResolvers = {
+	DateTime: DateTimeResolver,
+	Port: PortResolver,
+};
+
 export default function createSchema() {
 	return makeExecutableSchema({
 		schemaTransforms: [constraintDirective()],
 		typeDefs: [
 			constraintDirectiveTypeDefs,
 			baseTypeDefs,
-			types.typeDefs,
 			user.typeDefs,
 			game.typeDefs,
 			version.typeDefs,
 		],
 		resolvers: [
-			types.resolvers,
+			baseResolvers,
 			user.resolvers,
 			game.resolvers,
 			version.resolvers,

@@ -1,8 +1,8 @@
 import { createError } from 'apollo-errors';
 import argon from 'argon2';
 import gql from 'graphql-tag';
-import Database from '../../data-sources/database';
-import { baseResolver, DuplicateError } from '../resolvers';
+import Database from '../data-sources/database';
+import { baseResolver, DuplicateError } from './resolvers';
 
 export const typeDefs = gql`
 	extend type Mutation {
@@ -12,13 +12,13 @@ export const typeDefs = gql`
 	}
 
 	input CredentialsInput {
-		username: String! @constraint(minLength: 3, maxLength: 40)
-		password: String! @constraint(minLength: 6)
+		username: String!
+		password: String!
 	}
 
 	type User {
 		id: ID!
-		username: String! @constraint(minLength: 3, maxLength: 40)
+		username: String!
 		createdAt: DateTime!
 	}
 `;

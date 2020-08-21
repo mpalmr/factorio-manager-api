@@ -1,13 +1,38 @@
 import path from 'path';
 import fs from 'fs/promises';
 import rmfr from 'rmfr';
+import { GraphQLScalarType, GraphQLError } from 'graphql';
+import { Kind } from 'graphql/language';
 import { createError } from 'apollo-errors';
 import gql from 'graphql-tag';
-import Database from '../../data-sources/database';
-import Docker from '../../data-sources/docker';
-import { authenticationResolver,	DuplicateError } from '../resolvers';
+import Database from '../data-sources/database';
+import Docker from '../data-sources/docker';
+import { authenticationResolver,	DuplicateError } from './resolvers';
+
+function validateGameName(value) {
+	const trimmedValue = value.trim();
+	if (!/^[a-z\d\s_-]+$/i.test(trimmedValue)) {
+		throw new GraphQLError(
+			'Game name can only contain letters, numbers, spaces, underscores, and dashes',
+		);
+	}
+	return trimmedValue;
+}
+
+const GameNameResolver = new GraphQLScalarType({
+	name: 'GameName',
+	description: 'Name of the game for users to identify their specific factories',
+	parseValue: validateGameName,
+	serialize: validateGameName,
+	parseLiteral(ast) {
+		if (ast.kind === Kind.STRING) return validateGameName(ast.value);
+		throw new GraphQLError('Invalid game name');
+	},
+});
 
 export const typeDefs = gql`
+	scalar GameName
+
 	extend type Query {
 		games: [Game!]!
 		game(id: ID!): Game!
@@ -22,22 +47,21 @@ export const typeDefs = gql`
 	}
 
 	input CreateGameInput {
-		name: String! @constraint(minLength: 3, maxLength: 40)
-		version: String
+		name: GameName!
+		version: Version
 	}
 
 	input UpdateGameInput {
 		id: ID!
-		name: String @constraint(minLength: 3, maxLength: 40)
+		name: GameName
 	}
 
 	type Game {
 		id: ID!
-		name: String! @constraint(minLength: 3, maxLength: 40)
-		isOnline: Boolean!
+		name: GameName!isOnline: Boolean!
 		creator: User! @cacheControl(maxAge: 86400)
-		version: String!
-		port: Int! @constraint(min: 1024, max: 65535)
+		version: Version!
+		port: Port!
 		createdAt: DateTime!
 	}
 `;
@@ -83,6 +107,8 @@ function createUpdateStateResolver(action) {
 }
 
 export const resolvers = {
+	GameName: GameNameResolver,
+
 	Query: {
 		games: authenticationResolver.createResolver(
 			async (root, args, { dataSources }) => dataSources.db.knex('game')
