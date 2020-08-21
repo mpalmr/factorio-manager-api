@@ -1,28 +1,26 @@
-'use strict';
+import { ApolloServer } from 'apollo-server';
+import { createTestClient } from 'apollo-server-testing';
+import gql from 'graphql-tag';
+import { formatError } from 'apollo-errors';
+import * as dateMock from 'jest-date-mock';
+import { Docker } from 'docker-cli-js';
+import dataSources from '../src/data-sources';
+import createSchema from '../src/schema';
 
-const { ApolloServer } = require('apollo-server');
-const { createTestClient } = require('apollo-server-testing');
-const gql = require('graphql-tag');
-const { formatError } = require('apollo-errors');
-const dateMock = require('jest-date-mock');
-const { Docker } = require('docker-cli-js');
-const dataSources = require('../src/data-sources');
-const createSchema = require('../src/schema');
-
-exports.docker = new Docker({ echo: process.env.DEBUG === 'true' });
+export const docker = new Docker({ echo: process.env.DEBUG === 'true' });
 
 function defaultContext() {
 	return { get: jest.fn() };
 }
 
-exports.constructTestServer = function ({ context = defaultContext } = {}) {
+export function constructTestServer({ context = defaultContext } = {}) {
 	return new ApolloServer({
 		formatError,
 		context,
 		dataSources,
 		schema: createSchema(),
 	});
-};
+}
 
 const CREATE_USER_MUTATION = gql`
 	mutation CreateUserUtil($user: CredentialsInput!) {
@@ -30,7 +28,7 @@ const CREATE_USER_MUTATION = gql`
 	}
 `;
 
-exports.createUser = async function ({ username = 'BobSaget', password = 'P@ssw0rd' } = {}) {
+export async function createUser({ username = 'BobSaget', password = 'P@ssw0rd' } = {}) {
 	const { mutate } = createTestClient(exports.constructTestServer());
 	dateMock.advanceTo(new Date('2020-01-01'));
 	const { data } = await mutate({
@@ -41,11 +39,11 @@ exports.createUser = async function ({ username = 'BobSaget', password = 'P@ssw0
 	});
 	dateMock.clear();
 	return data.createUser;
-};
+}
 
-exports.createTestClientSession = async function (...args) {
-	return exports.createUser(...args)
-		.then(sessionToken => createTestClient(exports.constructTestServer({
-			context: () => ({ sessionToken }),
-		})));
-};
+export async function createTestClientSession(...args) {
+	const sessionToken = await exports.createUser(...args);
+	return createTestClient(constructTestServer({
+		context: () => ({ sessionToken }),
+	}));
+}

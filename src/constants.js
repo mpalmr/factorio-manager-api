@@ -1,4 +1,2 @@
-'use strict';
-
-exports.FACTORIO_IMAGE_NAME = 'factoriotools/factorio';
-exports.FACTORIO_PORT = 34197;
+export const FACTORIO_IMAGE_NAME = 'factoriotools/factorio';
+export const FACTORIO_PORT = 34197;

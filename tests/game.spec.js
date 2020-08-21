@@ -1,10 +1,8 @@
-'use strict';
-
-const path = require('path');
-const fs = require('fs').promises;
-const { createTestClient } = require('apollo-server-testing');
-const gql = require('graphql-tag');
-const { createTestClientSession, constructTestServer } = require('./util');
+import path from 'path';
+import fs from 'fs/promises';
+import { createTestClient } from 'apollo-server-testing';
+import gql from 'graphql-tag';
+import { createTestClientSession, constructTestServer } from './util';
 
 describe('Query', () => {
 	describe('games', () => {

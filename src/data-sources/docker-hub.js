@@ -1,10 +1,8 @@
-'use strict';
-
-const { RESTDataSource } = require('apollo-datasource-rest');
+import { RESTDataSource } from 'apollo-datasource-rest';
 
 // const semverPattern = /^(\d+\.){2}\d+$/;
 
-module.exports = class DockerHubDataSource extends RESTDataSource {
+export default class DockerHubDataSource extends RESTDataSource {
 	constructor(...args) {
 		super(...args);
 		this.baseURL = 'https://registry.hub.docker.com/';
@@ -38,4 +36,4 @@ module.exports = class DockerHubDataSource extends RESTDataSource {
 	// 					.find(([aValue, bValue]) => bValue - aValue);
 	// 			}));
 	// }
-};
+}

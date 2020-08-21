@@ -4,7 +4,6 @@ module.exports = {
 	root: true,
 	extends: 'airbnb-base',
 	parser: 'babel-eslint',
-	parserOptions: { sourceType: 'script' },
 	env: { node: true },
 	rules: {
 		strict: [2, 'global'],
@@ -34,6 +33,18 @@ module.exports = {
 					devDependencies: true,
 				}],
 			},
+		},
+		{
+			files: [
+				'.eslintrc.js',
+				'babel.config.js',
+				'jest.config.js',
+				'jest.integration.config.js',
+				'knexfile.js',
+				'migrations/**/*.js',
+				'migration-utils.js',
+			],
+			parserOptions: { sourceType: 'script' },
 		},
 	],
 };

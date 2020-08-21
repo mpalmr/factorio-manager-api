@@ -1,9 +1,7 @@
-'use strict';
-
-const { createTestClient } = require('apollo-server-testing');
-const dateMock = require('jest-date-mock');
-const gql = require('graphql-tag');
-const { constructTestServer } = require('./util');
+import { createTestClient } from 'apollo-server-testing';
+import * as dateMock from 'jest-date-mock';
+import gql from 'graphql-tag';
+import { constructTestServer } from './util';
 
 const CREATE_USER_MUTATION = gql`
 	mutation CreateUser($user: CredentialsInput!) {

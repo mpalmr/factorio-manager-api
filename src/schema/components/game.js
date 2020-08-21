@@ -1,15 +1,13 @@
-'use strict';
+import path from 'path';
+import fs from 'fs/promises';
+import rmfr from 'rmfr';
+import { createError } from 'apollo-errors';
+import gql from 'graphql-tag';
+import Database from '../../data-sources/database';
+import Docker from '../../data-sources/docker';
+import { authenticationResolver,	DuplicateError } from '../resolvers';
 
-const path = require('path');
-const fs = require('fs').promises;
-const rmfr = require('rmfr');
-const { createError } = require('apollo-errors');
-const gql = require('graphql-tag');
-const Database = require('../../data-sources/database');
-const Docker = require('../../data-sources/docker');
-const { authenticationResolver,	DuplicateError } = require('../resolvers');
-
-exports.typeDefs = gql`
+export const typeDefs = gql`
 	extend type Query {
 		games: [Game!]!
 		game(id: ID!): Game!
@@ -84,7 +82,7 @@ function createUpdateStateResolver(action) {
 	);
 }
 
-exports.resolvers = {
+export const resolvers = {
 	Query: {
 		games: authenticationResolver.createResolver(
 			async (root, args, { dataSources }) => dataSources.db.knex('game')

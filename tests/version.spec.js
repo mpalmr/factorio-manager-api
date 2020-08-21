@@ -1,8 +1,6 @@
-'use strict';
-
-const { createTestClient } = require('apollo-server-testing');
-const gql = require('graphql-tag');
-const { constructTestServer } = require('./util');
+import { createTestClient } from 'apollo-server-testing';
+import gql from 'graphql-tag';
+import { constructTestServer } from './util';
 
 describe('Query', () => {
 	describe('versions', () => {

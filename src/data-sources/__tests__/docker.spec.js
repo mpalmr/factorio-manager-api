@@ -1,6 +1,4 @@
-'use strict';
-
-const Docker = require('../docker');
+import Docker from '../docker';
 
 jest.mock('docker-cli-js', () => ({
 	Docker: class MockDocker {

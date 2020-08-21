@@ -1,9 +1,7 @@
-'use strict';
-
-const { createTestClient } = require('apollo-server-testing');
-const gql = require('graphql-tag');
-const { constructTestServer, createUser, docker } = require('./util');
-const Database = require('../src/data-sources/database');
+import { createTestClient } from 'apollo-server-testing';
+import gql from 'graphql-tag';
+import { constructTestServer, createUser, docker } from './util';
+import Database from '../src/data-sources/database';
 
 const CREATE_GAME_MUTATION = gql`
 	mutation CreateGame($game: CreateGameInput!) {

@@ -1,7 +1,5 @@
-'use strict';
-
-const gql = require('graphql-tag');
-const { baseResolver } = require('../resolvers');
+import gql from 'graphql-tag';
+import { baseResolver } from '../resolvers';
 
 exports.typeDefs = gql`
 	extend type Query {

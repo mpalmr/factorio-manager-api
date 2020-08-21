@@ -1,12 +1,10 @@
-'use strict';
-
-const { DataSource } = require('apollo-datasource');
-const { Docker } = require('docker-cli-js');
-const { FACTORIO_IMAGE_NAME, FACTORIO_PORT } = require('../constants');
+import { DataSource } from 'apollo-datasource';
+import { Docker } from 'docker-cli-js';
+import { FACTORIO_IMAGE_NAME, FACTORIO_PORT } from '../constants';
 
 const fromContainerStripPattern = new RegExp(`^${process.env.CONTAINER_NAMESPACE}_`);
 
-module.exports = class DockerDataSource extends DataSource {
+export default class DockerDataSource extends DataSource {
 	static fromContainer(container) {
 		return {
 			name: DockerDataSource.fromContainerName(container.names),
@@ -75,4 +73,4 @@ module.exports = class DockerDataSource extends DataSource {
 		const { containerList } = await this.cli.command(`ps -af name=${prefix}${name}`);
 		return containerList.map(DockerDataSource.fromContainer);
 	}
-};
+}

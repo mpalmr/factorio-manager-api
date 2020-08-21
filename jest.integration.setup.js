@@ -1,15 +1,14 @@
-'use strict';
+import path from 'path';
+import fs from 'fs/promises';
+import dotenv from 'dotenv';
+import rmfr from 'rmfr';
+import mkdirp from 'mkdirp';
+import * as dateMock from 'jest-date-mock';
+import knex from 'knex';
+import knexConfig from './knexfile';
+import { docker } from './tests/util';
 
-const path = require('path');
-require('dotenv').config({ path: path.resolve('.env.test') });
-const fs = require('fs').promises;
-const rmfr = require('rmfr');
-const mkdirp = require('mkdirp');
-const dateMock = require('jest-date-mock');
-const knex = require('knex');
-const knexConfig = require('./knexfile');
-const { docker } = require('./tests/util');
-
+dotenv.config({ path: path.resolve('.env.test') });
 jest.setTimeout(60000);
 
 const volumesPath = path.resolve(process.env.VOLUME_ROOT);

@@ -1,43 +1,47 @@
-'use strict';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { constraintDirective, constraintDirectiveTypeDefs } from 'graphql-constraint-directive';
+import gql from 'fake-tag';
+import * as types from './types';
+import * as user from './components/user';
+import * as game from './components/game';
+import * as version from './components/version';
 
-const { makeExecutableSchema } = require('@graphql-tools/schema');
-const { constraintDirective, constraintDirectiveTypeDefs } = require('graphql-constraint-directive');
-const { DateTimeResolver } = require('graphql-scalars');
-const baseTypeDefs = require('./base-typedefs');
-const user = require('./components/user');
-const game = require('./components/game');
-const version = require('./components/version');
+const baseTypeDefs = gql`
+	type Query {
+		_empty: String
+	}
 
-function applySchemaComponent(base, ...components) {
-	return components.reduce((acc, { typeDefs, resolvers }) => {
-		const { Query, Mutation, ...otherResolvers } = resolvers;
-		return {
-			...acc,
-			typeDefs: acc.typeDefs.concat(typeDefs),
-			resolvers: {
-				...acc.resolvers,
-				Query: {
-					...acc.resolvers.Query,
-					...resolvers.Query,
-				},
-				Mutation: {
-					...acc.resolvers.Mutation,
-					...resolvers.Mutation,
-				},
-				...otherResolvers,
-			},
-		};
-	}, base);
-}
+	type Mutation {
+		_empty: String
+	}
 
-module.exports = function createSchema() {
-	return makeExecutableSchema(applySchemaComponent({
-		typeDefs: [constraintDirectiveTypeDefs, baseTypeDefs],
+	directive @cacheControl(
+		maxAge: Int
+		scope: CacheControlScope
+	) on FIELD_DEFINITION | OBJECT | INTERFACE
+
+	enum CacheControlScope {
+		PUBLIC
+		PRIVATE
+	}
+`;
+
+export default function createSchema() {
+	return makeExecutableSchema({
 		schemaTransforms: [constraintDirective()],
-		resolvers: {
-			DateTime: DateTimeResolver,
-			Query: {},
-			Mutation: {},
-		},
-	}, user, game, version));
-};
+		typeDefs: [
+			constraintDirectiveTypeDefs,
+			baseTypeDefs,
+			types.typeDefs,
+			user.typeDefs,
+			game.typeDefs,
+			version.typeDefs,
+		],
+		resolvers: [
+			types.resolvers,
+			user.resolvers,
+			game.resolvers,
+			version.resolvers,
+		],
+	});
+}

@@ -5,19 +5,23 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "NODE_ENV=production node .",
-    "dev": "NODE_ENV=development nodemon --inspect .",
+    "start": "NODE_ENV=production npm run build && node dist",
+    "dev": "NODE_ENV=development nodemon -x babel-node --inspect src",
+    "build": "babel -d dist src",
     "test": "npm run lint && npm run test:integration && npm run test:unit",
     "test:unit": "NODE_ENV=test jest",
     "test:unit:debug": "NODE_ENV=test node --inspect node_modules/.bin/jest --watchAll -i",
     "test:integration": "NODE_ENV=test jest --forceExit --detectOpenHandles -ic jest.integration.config.js",
     "test:integration:debug": "NODE_ENV=test node --inspect-brk node_modules/.bin/jest --forceExit --detectOpenHandles --watchAll -ic jest.integration.config.js",
-    "lint": "eslint src migrations index.js knexfile.js migration-utils.js *.config.js jest.*",
+    "lint": "eslint src migrations knexfile.js migration-utils.js *.config.js jest.*",
     "clean": "./scripts/clean.sh"
   },
   "author": "Matthew Palmer <mspalmer91@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@babel/cli": "^7.10.5",
+    "@babel/node": "^7.10.5",
+    "@babel/preset-env": "^7.11.0",
     "@graphql-tools/schema": "^6.0.18",
     "apollo": "^2.30.2",
     "apollo-datasource": "^0.7.2",
@@ -27,6 +31,7 @@
     "apollo-server": "^2.16.1",
     "apollo-server-plugin-response-cache": "^0.5.3",
     "argon2": "^0.27.0",
+    "babel-plugin-graphql-tag": "^3.0.0",
     "camelcase-keys": "^6.2.2",
     "datasource-sql": "^1.3.0",
     "docker-cli-js": "^2.7.1",
@@ -36,7 +41,7 @@
     "graphql-constraint-directive": "^2.0.3",
     "graphql-scalars": "^1.2.6",
     "graphql-tag": "^2.11.0",
-    "knex": "^0.21.4",
+    "knex": "^0.21.5",
     "knex-stringcase": "^1.4.2",
     "luxon": "^1.24.1",
     "mkdirp": "^1.0.4",
@@ -45,7 +50,7 @@
     "sqlite3": "^5.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.11.1",
+    "@babel/core": "^7.11.4",
     "@babel/plugin-proposal-optional-chaining": "^7.11.0",
     "apollo-server-testing": "^2.16.1",
     "babel-eslint": "^10.1.0",
@@ -54,7 +59,7 @@
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-jest": "^23.20.0",
-    "jest": "^26.4.0",
+    "jest": "^26.4.1",
     "jest-date-mock": "^1.0.8",
     "nodemon": "^2.0.4"
   }

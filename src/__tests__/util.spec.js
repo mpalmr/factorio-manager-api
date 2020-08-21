@@ -1,7 +1,3 @@
-'use strict';
+import { createToken } from '../util';
 
-const { createToken } = require('../util');
-
-test('createToken', async () => {
-	await expect(createToken()).resolves.toHaveLength(88);
-});
+test('createToken', async () => expect(createToken()).resolves.toHaveLength(88));

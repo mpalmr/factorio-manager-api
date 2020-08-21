@@ -1,12 +1,10 @@
-'use strict';
+import { SQLDataSource } from 'datasource-sql';
+import { DateTime } from 'luxon';
+import snakecaseKeys from 'snakecase-keys';
+import camelcaseKeys from 'camelcase-keys';
+import { createToken } from '../util';
 
-const { SQLDataSource } = require('datasource-sql');
-const { DateTime } = require('luxon');
-const snakecaseKeys = require('snakecase-keys');
-const camelcaseKeys = require('camelcase-keys');
-const { createToken } = require('../util');
-
-module.exports = class Database extends SQLDataSource {
+export default class Database extends SQLDataSource {
 	static toRecord(row) {
 		return snakecaseKeys(row);
 	}
@@ -44,4 +42,4 @@ module.exports = class Database extends SQLDataSource {
 			.first()
 			.then(Database.fromRecord);
 	}
-};
+}

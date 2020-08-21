@@ -1,12 +1,10 @@
-'use strict';
+import { createError } from 'apollo-errors';
+import argon from 'argon2';
+import gql from 'graphql-tag';
+import Database from '../../data-sources/database';
+import { baseResolver, DuplicateError } from '../resolvers';
 
-const { createError } = require('apollo-errors');
-const argon = require('argon2');
-const gql = require('graphql-tag');
-const Database = require('../../data-sources/database');
-const { baseResolver, DuplicateError } = require('../resolvers');
-
-exports.typeDefs = gql`
+export const typeDefs = gql`
 	extend type Mutation {
 		createUser(user: CredentialsInput!): String!
 		createAuthToken(credentials: CredentialsInput!): String!
@@ -29,7 +27,7 @@ const InvalidCredentialsError = createError('InvalidCredentialsError', {
 	message: 'Invalid credentials',
 });
 
-exports.resolvers = {
+export const resolvers = {
 	Mutation: {
 		createUser: baseResolver.createResolver(
 			async (root, { user }, { dataSources }) => {

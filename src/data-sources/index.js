@@ -1,15 +1,13 @@
-'use strict';
+import knex from 'knex';
+import knexConfig from '../../knexfile';
+import Database from './database';
+import Docker from './docker';
+import DockerHub from './docker-hub';
 
-const knex = require('knex');
-const knexConfig = require('../../knexfile');
-const Database = require('./database');
-const Docker = require('./docker');
-const DockerHub = require('./docker-hub');
-
-module.exports = function createDataSource() {
+export default function createDataSource() {
 	return {
 		db: new Database(knex(knexConfig)),
 		docker: new Docker(),
 		dockerHub: new DockerHub(),
 	};
-};
+}
