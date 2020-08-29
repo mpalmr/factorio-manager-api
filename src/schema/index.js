@@ -1,14 +1,11 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import gql from 'fake-tag';
-import { DateTimeResolver, PortResolver } from 'graphql-scalars';
+import * as scalars from './scalars';
 import * as auth from './auth';
 import * as game from './game';
 import * as version from './version';
 
 const baseTypeDefs = gql`
-	scalar DateTime
-	scalar Port
-
 	type Query {
 		_empty: String
 	}
@@ -28,21 +25,17 @@ const baseTypeDefs = gql`
 	}
 `;
 
-const baseResolvers = {
-	DateTime: DateTimeResolver,
-	Port: PortResolver,
-};
-
 export default function createSchema() {
 	return makeExecutableSchema({
 		typeDefs: [
 			baseTypeDefs,
+			scalars.typeDefs,
 			auth.typeDefs,
 			game.typeDefs,
 			version.typeDefs,
 		],
 		resolvers: [
-			baseResolvers,
+			scalars.resolvers,
 			auth.resolvers,
 			game.resolvers,
 			version.resolvers,

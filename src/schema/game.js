@@ -1,8 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
 import rmfr from 'rmfr';
-import { GraphQLScalarType, GraphQLError } from 'graphql';
-import { Kind } from 'graphql/language';
 import { ApolloError, ForbiddenError } from 'apollo-server';
 import { composeResolvers } from '@graphql-tools/resolvers-composition';
 import gql from 'graphql-tag';
@@ -10,31 +8,7 @@ import Database from '../data-sources/database';
 import Docker from '../data-sources/docker';
 import { isAuthenticated } from './resolvers';
 
-// TODO: Try out ValidationError within apollo-server
-function validateGameName(value) {
-	const trimmedValue = value.trim();
-	if (!/^[a-z\d\s_-]+$/i.test(trimmedValue)) {
-		throw new GraphQLError(
-			'Game name can only contain letters, numbers, spaces, underscores, and dashes',
-		);
-	}
-	return trimmedValue;
-}
-
-const GameNameResolver = new GraphQLScalarType({
-	name: 'GameName',
-	description: 'Name of the game for users to identify their specific factories',
-	parseValue: validateGameName,
-	serialize: validateGameName,
-	parseLiteral(ast) {
-		if (ast.kind === Kind.STRING) return validateGameName(ast.value);
-		throw new GraphQLError('Invalid game name');
-	},
-});
-
 export const typeDefs = gql`
-	scalar GameName
-
 	extend type Query {
 		games: [Game!]!
 		game(id: ID!): Game!
@@ -97,8 +71,6 @@ function createUpdateStateResolver(action) {
 }
 
 export const resolvers = composeResolvers({
-	GameName: GameNameResolver,
-
 	Query: {
 		async games(root, args, { dataSources }) {
 			return dataSources.db.knex('game')
