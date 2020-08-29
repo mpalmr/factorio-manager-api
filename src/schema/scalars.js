@@ -26,7 +26,8 @@ const GameNameResolver = new GraphQLScalarType({
 });
 
 function validateVersion(value) {
-	if (!/^(\d+\.){2}\d+$/.test(value)) {
+	console.log(value);
+	if (value !== 'latest' && !/^((\d+\.){2}\d+)$/.test(value)) {
 		throw new GraphQLError('Value is not a semver version in <major>.<minor>.<patch> format');
 	}
 	return value;

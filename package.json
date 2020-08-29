@@ -46,6 +46,7 @@
     "luxon": "^1.25.0",
     "mkdirp": "^1.0.4",
     "rmfr": "^2.0.0",
+    "semver": "^7.3.2",
     "snakecase-keys": "^3.2.0",
     "sqlite3": "^5.0.0"
   },
