@@ -1,8 +1,6 @@
 import { SQLDataSource } from 'datasource-sql';
-import { DateTime } from 'luxon';
 import snakecaseKeys from 'snakecase-keys';
 import camelcaseKeys from 'camelcase-keys';
-import { createToken } from '../util';
 
 export default class Database extends SQLDataSource {
 	static toRecord(row) {
@@ -18,21 +16,29 @@ export default class Database extends SQLDataSource {
 		};
 	}
 
-	async createSession(userId, expires = { days: 7 }) {
-		const token = await createToken();
-		await this.knex('session').insert(Database.toRecord({
-			userId,
-			token,
-			expires: DateTime.utc().plus(expires).toJSDate(),
-		}));
-		return token;
-	}
+	async createSession(username, token) {
+		// First check and see if a user exists for that username
+		return this.knex.transaction(async trx => {
+			const userRecord = await trx('user')
+				.where('username', username)
+				.first()
+				// If user does not exist insert it into DB
+				.then(user => user || trx('user')
+					.insert(Database.toRecord({ username }))
+					.then(() => trx('user') // and pull it out
+						.where('username', username)
+						.first()))
+				.then(Database.fromRecord);
 
-	session(token) {
-		return this.knex('session')
-			.where('session.token', token)
-			.where('session.expires', '>=', Date.now())
-			.where('session.invalidated', false);
+			// Invalidate all previous sessions
+			await trx('session').update('token', null).where('user_id', userRecord.id);
+
+			// Create new session
+			return trx('session').insert(Database.toRecord({
+				token,
+				userId: userRecord.id,
+			}));
+		});
 	}
 
 	async getContainerId(gameId) {

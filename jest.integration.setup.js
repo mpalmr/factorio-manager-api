@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import dotenv from 'dotenv';
 import rmfr from 'rmfr';
 import mkdirp from 'mkdirp';
+import nock from 'nock';
 import * as dateMock from 'jest-date-mock';
 import knex from 'knex';
 import knexConfig from './knexfile';
@@ -49,6 +50,7 @@ beforeEach(async () => mkdirp(volumesPath));
 
 afterEach(() => {
 	dateMock.clear();
+	nock.cleanAll();
 	return Promise.all([
 		removeContainers(),
 		removeVolumes(),

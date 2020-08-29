@@ -1,4 +1,4 @@
-import { GraphQLScalarType, GraphQLError, version } from 'graphql';
+import { GraphQLScalarType, GraphQLError } from 'graphql';
 import { Kind } from 'graphql/language';
 import gql from 'graphql-tag';
 import { baseResolver } from './resolvers';
@@ -15,7 +15,7 @@ const VersionResolver = new GraphQLScalarType({
 	serialize: validateVersion,
 	parseLiteral(ast) {
 		if (ast.kind !== Kind.STRING) throw new GraphQLError('Version must be a string');
-		return validateVersion(version);
+		return validateVersion(ast.value);
 	},
 });
 

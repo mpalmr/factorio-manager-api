@@ -19,9 +19,9 @@ describe('Query', () => {
 				`,
 			});
 
-			expect(data).toBeNull();
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('You must be logged in to view this resource');
+			expect(errors[0].message).toBe('Unauthorized');
+			expect(data).toBeNull();
 		});
 
 		test('Lists all games', async () => {
@@ -95,7 +95,7 @@ describe('Query', () => {
 			});
 
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('You must be logged in to view this resource');
+			expect(errors[0].message).toBe('Unauthorized');
 			expect(data).toBeNull();
 		});
 
@@ -108,7 +108,7 @@ describe('Query', () => {
 			});
 
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('Resource could not be found');
+			expect(errors[0].message).toBe('Game not found');
 			expect(data).toBeNull();
 		});
 
@@ -168,7 +168,7 @@ describe('Mutation', () => {
 
 			expect(data).toBeNull();
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('You must be logged in to view this resource');
+			expect(errors[0].message).toBe('Unauthorized');
 		});
 
 		test('Volume of that name should not exist', async () => {
@@ -192,7 +192,7 @@ describe('Mutation', () => {
 
 			expect(data).toBeNull();
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('Duplicate record found');
+			expect(errors[0].message).toBe('Game already exists');
 		});
 
 		test('Successful creation', async () => {
@@ -270,9 +270,7 @@ describe('Mutation', () => {
 		`;
 
 		test('Requires authentication', async () => {
-			const { mutate } = createTestClient(constructTestServer());
-
-			const { data, errors } = await mutate({
+			const { data, errors } = await createTestClient(constructTestServer()).mutate({
 				mutation: UPDATE_GAME_MUTATION,
 				variables: {
 					game: {
@@ -283,14 +281,12 @@ describe('Mutation', () => {
 			});
 
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('You must be logged in to view this resource');
+			expect(errors[0].message).toBe('Unauthorized');
 			expect(data).toBeNull();
 		});
 
 		test('Game must exist', async () => {
-			const { mutate } = await createTestClientSession();
-
-			const { data, errors } = await mutate({
+			const { data, errors } = await createTestClientSession().then(({ mutate }) => mutate({
 				mutation: UPDATE_GAME_MUTATION,
 				variables: {
 					game: {
@@ -298,10 +294,10 @@ describe('Mutation', () => {
 						name: 'wer',
 					},
 				},
-			});
+			}));
 
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('Resource could not be found');
+			expect(errors[0].message).toBe('Game not found');
 			expect(data).toBeNull();
 		});
 
@@ -355,7 +351,7 @@ describe('Mutation', () => {
 			});
 
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('You must be logged in to view this resource');
+			expect(errors[0].message).toBe('Unauthorized');
 			expect(data).toEqual({ deleteGame: null });
 		});
 
@@ -368,7 +364,7 @@ describe('Mutation', () => {
 			});
 
 			expect(errors).toHaveLength(1);
-			expect(errors[0].message).toBe('Resource could not be found');
+			expect(errors[0].message).toBe('Game not found');
 			expect(data).toEqual({ deleteGame: null });
 		});
 

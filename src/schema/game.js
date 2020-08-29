@@ -3,12 +3,14 @@ import fs from 'fs/promises';
 import rmfr from 'rmfr';
 import { GraphQLScalarType, GraphQLError } from 'graphql';
 import { Kind } from 'graphql/language';
-import { createError } from 'apollo-errors';
+import { ApolloError, ForbiddenError } from 'apollo-server';
+import { composeResolvers } from '@graphql-tools/resolvers-composition';
 import gql from 'graphql-tag';
 import Database from '../data-sources/database';
 import Docker from '../data-sources/docker';
-import { authenticationResolver,	DuplicateError } from './resolvers';
+import { isAuthenticated } from './resolvers';
 
+// TODO: Try out ValidationError within apollo-server
 function validateGameName(value) {
 	const trimmedValue = value.trim();
 	if (!/^[a-z\d\s_-]+$/i.test(trimmedValue)) {
@@ -66,138 +68,112 @@ export const typeDefs = gql`
 	}
 `;
 
-const NotFoundError = createError('NotFoundError', {
-	message: 'Resource could not be found',
-});
+function resolveGame({ ownsGame = false, isOnline = null } = {}) {
+	return next => async (parent, args, ctx, info) => {
+		const game = await ctx.dataSources.db.knex('game')
+			.where('id', args.gameId || args.game?.id)
+			.first()
+			.then(Database.fromRecord);
 
-const ForbiddenError = createError('ForbiddenError', {
-	message: 'You do not have permissions to view this resource',
-});
+		if (!game) throw new ApolloError('Game not found');
+		if (ownsGame && game.creatorId !== ctx.user.id) {
+			throw new ForbiddenError('You do not have permissions to view this resource');
+		}
+		if (isOnline === true && !game.isOnline) {
+			throw new ApolloError('Game must be online to perform this action');
+		}
+		if (isOnline === false && game.isOnline) {
+			throw new ApolloError('Game must be offline to perform this action');
+		}
 
-const IsRunningError = createError('IsRunningError', {
-	message: 'Container must be stopped to perform this operation',
-});
-
-const getGameByIdResolver = authenticationResolver.createResolver((parent, args, ctx) => {
-	ctx.getGameById = async id => ctx.dataSources.db.knex('game')
-		.where('id', parseInt(id, 10))
-		.first()
-		.then(record => {
-			if (!record) throw new NotFoundError();
-			return Database.fromRecord(record);
-		});
-});
-
-const isOwnGameOffline = getGameByIdResolver.createResolver(
-	async (parent, { gameId, game }, ctx) => {
-		ctx.game = await ctx.getGameById(gameId || game?.id).then(result => {
-			if (result.creatorId !== ctx.user.id) throw new ForbiddenError();
-			if (result.isOnline) throw new IsRunningError();
-			return result;
-		});
-	},
-);
-
-function createUpdateStateResolver(action) {
-	return isOwnGameOffline.createResolver(
-		async (root, args, { dataSources, game }) => dataSources.docker.cli
-			.command(`${action} ${Docker.toContainerName(game.name)}`)
-			.then(() => ({ ...game, isOnline: action === 'start' })),
-	);
+		return next(parent, args, { ...ctx, game }, info);
+	};
 }
 
-export const resolvers = {
+function createUpdateStateResolver(action) {
+	return async (root, args, { dataSources, game }) => dataSources.docker.cli
+		.command(`${action} ${Docker.toContainerName(game.name)}`)
+		.then(() => ({ ...game, isOnline: action === 'start' }));
+}
+
+export const resolvers = composeResolvers({
 	GameName: GameNameResolver,
 
 	Query: {
-		games: authenticationResolver.createResolver(
-			async (root, args, { dataSources }) => dataSources.db.knex('game')
+		async games(root, args, { dataSources }) {
+			return dataSources.db.knex('game')
 				.orderBy('created_at')
-				.then(games => games.map(Database.fromRecord)),
-		),
+				.then(games => games.map(Database.fromRecord));
+		},
 
-		game: authenticationResolver.createResolver(
-			async (root, { id }, { dataSources }) => dataSources.db.knex('game')
+		async game(root, { id }, { dataSources }) {
+			return dataSources.db.knex('game')
 				.where('id', id)
 				.first()
 				.then(record => {
-					if (!record) throw new NotFoundError();
+					if (!record) throw new ApolloError('Game not found');
 					return Database.fromRecord(record);
-				}),
-		),
+				});
+		},
 	},
 
 	Mutation: {
-		createGame: authenticationResolver.createResolver(
-			async (root, { game }, { dataSources, user }) => {
-				// Create volume directory
-				const containerVolumePath = path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`);
-				await fs.mkdir(containerVolumePath)
-					.catch(ex => Promise.reject(ex.code === 'EEXIST' ? new DuplicateError() : ex));
-				// TODO: Run this process as user factorio UID 845
-				// await fs.chown(containerVolumePath, 845, 845);
+		async createGame(root, { game }, { dataSources, user }) {
+			// Create volume directory
+			const containerVolumePath = path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`);
+			await fs.mkdir(containerVolumePath)
+				.catch(ex => Promise.reject(ex.code === 'EEXIST'
+					? new ApolloError('Game already exists')
+					: ex));
+			// TODO: Run this process as user factorio UID 845
+			// await fs.chown(containerVolumePath, 845, 845);
 
-				// Create docker container_id
-				async function findAvailablePort() {
-					const portsInUse = await dataSources.db.knex('game')
-						.select('port')
-						.then(games => games.map(a => a.port));
-					function generatePort() {
-						const port = Math.floor(Math.random() * (65535 - 1024) + 1024);
-						return portsInUse.includes(port) ? generatePort() : port;
-					}
-					return generatePort();
+			// Create docker container_id
+			async function findAvailablePort() {
+				const portsInUse = await dataSources.db.knex('game')
+					.select('port')
+					.then(games => games.map(a => a.port));
+				function generatePort() {
+					const port = Math.floor(Math.random() * (65535 - 1024) + 1024);
+					return portsInUse.includes(port) ? generatePort() : port;
 				}
-				const factorioPort = game.port || await findAvailablePort();
+				return generatePort();
+			}
+			const factorioPort = game.port || await findAvailablePort();
 
-				const version = game.version || 'latest';
-				const containerId = await dataSources.docker.run(game.name, game.version, { factorioPort });
+			const version = game.version || 'latest';
+			const containerId = await dataSources.docker.run(game.name, game.version, { factorioPort });
 
-				// Stop container and remove temporary save file
-				await dataSources.docker.stop(containerId);
-				await rmfr(path.join(containerVolumePath, 'saves', '*'));
+			// Stop container and remove temporary save file
+			await dataSources.docker.stop(containerId);
+			await rmfr(path.join(containerVolumePath, 'saves', '*'));
 
-				// Create database entry
-				return dataSources.db.knex.transaction(trx => trx('game').insert(Database.toRecord({
+			// Create database entry
+			return dataSources.db.knex.transaction(async trx => {
+				await trx('game').insert(Database.toRecord({
 					containerId,
 					version,
 					port: factorioPort,
 					name: game.name,
 					creatorId: user.id,
-				}))
-					.then(() => trx('game').where('name', game.name).first())
-					.then(Database.fromRecord));
-			},
-			async (root, { game }, { dataSources }, error) => {
-				// Remove container and its volume if any errors occur
-				await Promise.all([
-					dataSources.docker.remove(game.name, true)
-						.catch(ex => (ex.message.includes('No such container') ? null : Promise.reject(ex))),
-					rmfr(path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`)),
-				]);
-				return Promise.reject(error);
-			},
-		),
+				}));
+				return trx('game').where('name', game.name).first().then(Database.fromRecord);
+			});
+		},
 
-		updateGame: isOwnGameOffline.createResolver(
-			async (root, { game: updates }, { game, dataSources }) => {
-				if (game.isOnline) throw new IsRunningError();
-				await dataSources.db.knex.knex('game')
-					.where('id', game.id)
-					.update(updates);
-				return { ...game, ...updates };
-			},
-		),
+		async updateGame(root, { game: updates }, { game, dataSources }) {
+			await dataSources.db.knex.knex('game')
+				.where('id', game.id)
+				.update(updates);
+			return { ...game, ...updates };
+		},
 
-		deleteGame: isOwnGameOffline.createResolver(
-			async (root, { gameId }, { game, dataSources }) => {
-				if (game.isOnline) throw new IsRunningError();
-				await dataSources.docker.cli.command(`rm -f ${game.containerId}`);
-				await rmfr(path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`));
-				await dataSources.db.knex('game').where('id', gameId).del();
-				return null;
-			},
-		),
+		async deleteGame(root, { gameId }, { game, dataSources }) {
+			await dataSources.docker.cli.command(`rm -f ${game.containerId}`);
+			await rmfr(path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`));
+			await dataSources.db.knex('game').where('id', gameId).del();
+			return null;
+		},
 
 		startGame: createUpdateStateResolver('start'),
 		stopGame: createUpdateStateResolver('stop'),
@@ -216,4 +192,28 @@ export const resolvers = {
 				.then(Database.fromRecord);
 		},
 	},
-};
+}, {
+	Query: {
+		game: [isAuthenticated()],
+		games: [isAuthenticated()],
+	},
+	Mutation: {
+		createGame: [isAuthenticated()],
+		updateGame: [isAuthenticated(), resolveGame({
+			ownsGame: true,
+			isOnline: false,
+		})],
+		deleteGame: [isAuthenticated(), resolveGame({
+			ownsGame: true,
+			isOnline: false,
+		})],
+		startGame: [isAuthenticated(), resolveGame({
+			ownsGame: true,
+			isOnline: false,
+		})],
+		stopGame: [isAuthenticated(), resolveGame({
+			ownsGame: true,
+			isOnline: false,
+		})],
+	},
+});
