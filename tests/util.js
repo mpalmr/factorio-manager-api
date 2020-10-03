@@ -4,7 +4,6 @@ import { ApolloServer } from 'apollo-server';
 import { createTestClient } from 'apollo-server-testing';
 import gql from 'graphql-tag';
 import nock from 'nock';
-import { formatError } from 'apollo-errors';
 import * as dateMock from 'jest-date-mock';
 import { Docker } from 'docker-cli-js';
 import dataSources from '../src/data-sources';
@@ -20,7 +19,6 @@ function defaultContext() {
 
 export function constructTestServer({ context = defaultContext } = {}) {
 	return new ApolloServer({
-		formatError,
 		context,
 		dataSources,
 		schema: createSchema(),

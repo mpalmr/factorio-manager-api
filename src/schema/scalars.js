@@ -1,7 +1,7 @@
 import { GraphQLScalarType, GraphQLError } from 'graphql';
 import { Kind } from 'graphql/language';
 import gql from 'graphql-tag';
-import { DateTimeResolver, PortResolver } from 'graphql-scalars';
+import { UnsignedIntResolver, DateTimeResolver, PortResolver } from 'graphql-scalars';
 
 // TODO: Try out ValidationError within apollo-server
 function validateGameName(value) {
@@ -26,7 +26,6 @@ const GameNameResolver = new GraphQLScalarType({
 });
 
 function validateVersion(value) {
-	console.log(value);
 	if (value !== 'latest' && !/^((\d+\.){2}\d+)$/.test(value)) {
 		throw new GraphQLError('Value is not a semver version in <major>.<minor>.<patch> format');
 	}
@@ -45,6 +44,8 @@ const VersionResolver = new GraphQLScalarType({
 });
 
 export const typeDefs = gql`
+	scalar Upload
+	scalar UnsignedInt
 	scalar DateTime
 	scalar Port
 	scalar GameName
@@ -52,6 +53,7 @@ export const typeDefs = gql`
 `;
 
 export const resolvers = {
+	UnsignedInt: UnsignedIntResolver,
 	DateTime: DateTimeResolver,
 	Port: PortResolver,
 	GameName: GameNameResolver,

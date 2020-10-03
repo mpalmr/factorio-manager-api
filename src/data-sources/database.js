@@ -4,16 +4,19 @@ import camelcaseKeys from 'camelcase-keys';
 
 export default class Database extends SQLDataSource {
 	static toRecord(row) {
-		return snakecaseKeys(row);
+		return Array.isArray(row) ? row.map(snakecaseKeys) : snakecaseKeys(row);
 	}
 
 	static fromRecord(record) {
-		const row = camelcaseKeys(record);
-		return row && {
-			...row,
-			// SQLite returns strings that aren't ISO timestamps
-			createdAt: row.createdAt && new Date(new Date(row.createdAt).toISOString()),
-		};
+		function convert(a) {
+			const row = camelcaseKeys(a);
+			return !row?.createdAt ? row : {
+				...row,
+				createdAt: new Date(new Date(row.createdAt).toISOString()),
+			};
+		}
+
+		return Array.isArray(record) ? record.map(convert) : convert(record);
 	}
 
 	async createSession(username, token) {
@@ -39,6 +42,15 @@ export default class Database extends SQLDataSource {
 				userId: userRecord.id,
 			}));
 		});
+	}
+
+	async getSessionUser(sessionToken) {
+		return this.knex('user')
+			.innerJoin('session', 'session.user_id', 'user.id')
+			.where('session.token', sessionToken)
+			.select('user.*')
+			.first()
+			.then(Database.fromRecord);
 	}
 
 	async getContainerId(gameId) {

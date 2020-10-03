@@ -1,5 +1,4 @@
 import gql from 'graphql-tag';
-import { baseResolver } from './resolvers';
 
 export const typeDefs = gql`
 	extend type Query {
@@ -13,8 +12,8 @@ export const typeDefs = gql`
 
 export const resolvers = {
 	Query: {
-		versions: baseResolver.createResolver(
-			async (root, args, { dataSources }) => dataSources.dockerHub.getVersions(),
-		),
+		async versions(root, args, { dataSources }) {
+			return dataSources.dockerHub.getVersions();
+		},
 	},
 };

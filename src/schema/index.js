@@ -3,6 +3,7 @@ import gql from 'fake-tag';
 import * as scalars from './scalars';
 import * as auth from './auth';
 import * as game from './game';
+import * as gameState from './game-state';
 import * as version from './version';
 
 const baseTypeDefs = gql`
@@ -11,6 +12,10 @@ const baseTypeDefs = gql`
 	}
 
 	type Mutation {
+		_empty: String
+	}
+
+	type Game {
 		_empty: String
 	}
 
@@ -32,12 +37,14 @@ export default function createSchema() {
 			scalars.typeDefs,
 			auth.typeDefs,
 			game.typeDefs,
+			gameState.typeDefs,
 			version.typeDefs,
 		],
 		resolvers: [
 			scalars.resolvers,
 			auth.resolvers,
 			game.resolvers,
+			gameState.resolvers,
 			version.resolvers,
 		],
 	});

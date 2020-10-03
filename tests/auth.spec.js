@@ -20,8 +20,8 @@ describe('Mutation', () => {
 				mutation: LOGIN_MUTATION,
 				variables: {
 					credentials: {
-						username: process.env.TEST_FACTORIO_ACCOUNT_USERNAME,
-						password: process.env.TEST_FACTORIO_ACCOUNT_PASSWORD,
+						username: 'BigMoneyBossMan',
+						password: 'iamverysmart',
 					},
 				},
 			});
@@ -39,7 +39,7 @@ describe('Mutation', () => {
 				mutation: LOGIN_MUTATION,
 				variables: {
 					credentials: {
-						username: process.env.TEST_FACTORIO_ACCOUNT_USERNAME,
+						username: 'SmallMoneyEmployeePerson',
 						password: 'thisisnotyourpassword',
 					},
 				},

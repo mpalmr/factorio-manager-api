@@ -17,7 +17,7 @@ describe('Query', () => {
 
 			expect(errors).not.toBeDefined();
 			expect(data.versions).toEqual(
-				expect.arrayContaining(['latest', '0.13', '0.13-dev', '0.15.11']),
+				expect.arrayContaining(['0.15.11', '1.0.0']),
 			);
 		});
 	});

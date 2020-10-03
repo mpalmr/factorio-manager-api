@@ -1,12 +1,11 @@
 import path from 'path';
 import fs from 'fs/promises';
 import rmfr from 'rmfr';
-import { ApolloError, ForbiddenError } from 'apollo-server';
+import { ApolloError } from 'apollo-server';
 import { composeResolvers } from '@graphql-tools/resolvers-composition';
 import gql from 'graphql-tag';
 import Database from '../data-sources/database';
-import Docker from '../data-sources/docker';
-import { isAuthenticated } from './resolvers';
+import { isAuthenticated, resolveGame } from './resolvers';
 
 export const typeDefs = gql`
 	extend type Query {
@@ -18,13 +17,19 @@ export const typeDefs = gql`
 		createGame(game: CreateGameInput!): Game!
 		deleteGame(gameId: ID!): Boolean
 		updateGame(game: UpdateGameInput!): Game!
-		startGame(gameId: ID!): Game!
-		stopGame(gameId: ID!): Game!
 	}
 
 	input CreateGameInput {
 		name: GameName!
 		version: Version
+		admins: [String]
+		mapGenerationSettings: MapGenerationSettingsInput
+	}
+
+	input MapGenerationSettingsInput {
+		peacefulMode: Boolean
+		seed: UnsignedInt # Leave null for random seed
+		biterStartingAreaMultiplier: UnsignedInt
 	}
 
 	input UpdateGameInput {
@@ -32,50 +37,47 @@ export const typeDefs = gql`
 		name: GameName
 	}
 
-	type Game {
+	extend type Game {
 		id: ID!
-		name: GameName!isOnline: Boolean!
+		name: GameName!
 		creator: User! @cacheControl(maxAge: 86400)
 		version: Version!
 		port: Port!
+		mapGenerationSettings: MapGenerationSettings!
+		admins: [String]!
+		settings: GameSettings!
 		createdAt: DateTime!
 	}
+
+	type MapGenerationSettings {
+		peacefulMode: Boolean!
+		seed: UnsignedInt # Leave null for random seed
+		biterStartingAreaMultiplier: UnsignedInt
+	}
+
+	type GameSettings {
+		recipeDifficulty: UnsignedInt!
+		technologyDifficulty: UnsignedInt!
+		technologyPriceMultiplier: UnsignedInt!
+		researchQueue: ResearchQueueType!
+		isPollutionEnabled: Boolean!
+		isEnemyEvolutionEnabled: Boolean!
+		isEnemyExpansionEnabled: Boolean!
+	}
+
+	enum ResearchQueueType {
+		AFTER_VICTORY
+		ALWAYS
+		NEVER
+	}
 `;
-
-function resolveGame({ ownsGame = false, isOnline = null } = {}) {
-	return next => async (parent, args, ctx, info) => {
-		const game = await ctx.dataSources.db.knex('game')
-			.where('id', args.gameId || args.game?.id)
-			.first()
-			.then(Database.fromRecord);
-
-		if (!game) throw new ApolloError('Game not found');
-		if (ownsGame && game.creatorId !== ctx.user.id) {
-			throw new ForbiddenError('You do not have permissions to view this resource');
-		}
-		if (isOnline === true && !game.isOnline) {
-			throw new ApolloError('Game must be online to perform this action');
-		}
-		if (isOnline === false && game.isOnline) {
-			throw new ApolloError('Game must be offline to perform this action');
-		}
-
-		return next(parent, args, { ...ctx, game }, info);
-	};
-}
-
-function createUpdateStateResolver(action) {
-	return async (root, args, { dataSources, game }) => dataSources.docker.cli
-		.command(`${action} ${Docker.toContainerName(game.name)}`)
-		.then(() => ({ ...game, isOnline: action === 'start' }));
-}
 
 export const resolvers = composeResolvers({
 	Query: {
 		async games(root, args, { dataSources }) {
 			return dataSources.db.knex('game')
 				.orderBy('created_at')
-				.then(games => games.map(Database.fromRecord));
+				.then(Database.fromRecord);
 		},
 
 		async game(root, { id }, { dataSources }) {
@@ -90,13 +92,18 @@ export const resolvers = composeResolvers({
 	},
 
 	Mutation: {
-		async createGame(root, { game }, { dataSources, user }) {
+		async createGame(
+			root,
+			{
+				game: { admins, ...game },
+			},
+			{ dataSources, user },
+		) {
 			// Create volume directory
 			const containerVolumePath = path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`);
-			await fs.mkdir(containerVolumePath)
-				.catch(ex => Promise.reject(ex.code === 'EEXIST'
-					? new ApolloError('Game already exists')
-					: ex));
+			await fs.mkdir(containerVolumePath).catch(ex => Promise.reject(ex.code === 'EEXIST'
+				? new ApolloError('Game already exists')
+				: ex));
 			// TODO: Run this process as user factorio UID 845
 			// await fs.chown(containerVolumePath, 845, 845);
 
@@ -116,9 +123,11 @@ export const resolvers = composeResolvers({
 			const version = game.version || 'latest';
 			const containerId = await dataSources.docker.run(game.name, game.version, { factorioPort });
 
-			// Stop container and remove temporary save file
 			await dataSources.docker.stop(containerId);
-			await rmfr(path.join(containerVolumePath, 'saves', '*'));
+			await Promise.all([
+				rmfr(path.join(containerVolumePath, 'saves', '*')),
+				dataSources.adminList.write(game.name, admins),
+			]);
 
 			// Create database entry
 			return dataSources.db.knex.transaction(async trx => {
@@ -134,34 +143,44 @@ export const resolvers = composeResolvers({
 		},
 
 		async updateGame(root, { game: updates }, { game, dataSources }) {
-			await dataSources.db.knex.knex('game')
-				.where('id', game.id)
-				.update(updates);
-			return { ...game, ...updates };
+			return dataSources.db.knex.transaction(async trx => {
+				const tasks = [trx('game').where('id', game.id).update(Database.toRecord(updates))];
+				if (updates.admins) tasks.push(dataSources.adminList.write(updates.admins));
+				await Promise.all(tasks);
+				return trx('game').where('id', game.id).first().then(Database.fromRecord);
+			});
 		},
 
 		async deleteGame(root, { gameId }, { game, dataSources }) {
-			await dataSources.docker.cli.command(`rm -f ${game.containerId}`);
+			await dataSources.docker.cli.command(`rm -vf ${game.containerId}`);
 			await rmfr(path.resolve(`${process.env.VOLUME_ROOT}/${game.name}`));
 			await dataSources.db.knex('game').where('id', gameId).del();
 			return null;
 		},
-
-		startGame: createUpdateStateResolver('start'),
-		stopGame: createUpdateStateResolver('stop'),
 	},
 
 	Game: {
-		async isOnline(game, args, { dataSources }) {
-			return dataSources.docker.isOnline(game.containerId);
-		},
-
 		async creator(game, args, { dataSources }) {
 			return dataSources.db.knex('user')
 				.where('id', game.creatorId)
 				.select('user.*')
 				.first()
 				.then(Database.fromRecord);
+		},
+
+		async mapGenerationSettings(game, args, { dataSources }) {
+			return dataSources.mapGenreationSettings.get(game.name);
+		},
+
+		async admins(game, args, { dataSources }) {
+			const usernames = await dataSources.adminList.get();
+			return dataSources.db.knex('user')
+				.whereIn(usernames)
+				.then(Database.fromRecord);
+		},
+
+		async settings(game, args, { dataSources }) {
+			return dataSources.gameSettings.get(game.name);
 		},
 	},
 }, {
