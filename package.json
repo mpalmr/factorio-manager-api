@@ -46,7 +46,7 @@
     "rmfr": "^2.0.0",
     "semver": "^7.3.2",
     "snakecase-keys": "^3.2.0",
-    "sqlite3": "^5.0.0"
+    "sqlite3": "^5.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.11.6",
