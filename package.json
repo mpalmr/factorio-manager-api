@@ -39,7 +39,7 @@
     "graphql": "^15.3.0",
     "graphql-scalars": "^1.2.7",
     "graphql-tag": "^2.11.0",
-    "knex": "^0.21.6",
+    "knex": "^2.4.0",
     "knex-stringcase": "^1.4.3",
     "luxon": "^1.25.0",
     "mkdirp": "^1.0.4",
